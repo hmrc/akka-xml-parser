@@ -63,7 +63,8 @@ private object AppDependencies {
 
   val compile = Seq(
     "com.typesafe.play" %% "play" % PlayVersion.current,
-    ws
+    ws,
+    "com.fasterxml" % "aalto-xml" % "1.0.0"
   )
 
   trait TestDependencies {

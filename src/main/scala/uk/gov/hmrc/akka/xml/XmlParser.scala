@@ -16,13 +16,152 @@
 
 package uk.gov.hmrc.akka.xml
 
+import akka.NotUsed
+import akka.stream.scaladsl.Flow
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.util.ByteString
+import com.fasterxml.aalto.stax.InputFactoryImpl
+import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader}
+
+import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 /**
   * Created by abhishek on 1/12/16.
   */
-class XmlParser {
+object AkkaXMLParser {
+  val XML_ERROR = 258
+  val MALFORMED_STATUS = "Malformed"
+  /**
+    * Parser Flow that takes a stream of ByteStrings and parses them to (ByteString, Set[XMLElement]).
+    */
 
-  def helloAkka = {
-    "HelloAkka"
+  def parser(instructions: Set[XMLInstruction]): Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] =
+  Flow.fromGraph(new StreamingXmlParser(instructions))
+
+
+  private class StreamingXmlParser(instructions: Set[XMLInstruction])
+    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
+      with StreamHelper {
+    val in: Inlet[ByteString] = Inlet("XMLParser.in")
+    val out: Outlet[(ByteString, Set[XMLElement])] = Outlet("XMLParser.out")
+    override val shape: FlowShape[ByteString, (ByteString, Set[XMLElement])] = FlowShape(in, out)
+
+    override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+      new GraphStageLogic(shape) {
+
+
+        import javax.xml.stream.XMLStreamConstants
+
+        private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
+        private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
+        setHandler(in, new InHandler {
+          override def onPush(): Unit = {
+            array = grab(in).toArray
+            byteBuffer ++= array
+            parser.getInputFeeder.feedInput(array, 0, array.length)
+            advanceParser()
+          }
+
+          override def onUpstreamFinish(): Unit = {
+            parser.getInputFeeder.endOfInput()
+            if (!parser.hasNext) {
+              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              completeStage()
+            }
+            else if (isAvailable(out)) {
+              advanceParser()
+            }
+          }
+        })
+
+        setHandler(out, new OutHandler {
+          override def onPull(): Unit = {
+            if (!isClosed(in)) {
+              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              advanceParser()
+              byteBuffer.clear()
+            }
+            else {
+              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              byteBuffer.clear()
+              completeStage()
+            }
+          }
+        })
+
+        var array = Array[Byte]()
+        val node = ArrayBuffer[String]()
+        val byteBuffer = ArrayBuffer[Byte]()
+        val xmlElements = mutable.Set[XMLElement]()
+        private var isCharacterBuffering = false
+        private val bufferedText = new StringBuilder
+
+        @tailrec private def advanceParser(): Unit = {
+          if (parser.hasNext) {
+            val event = Try(parser.next())
+              .getOrElse {
+                XML_ERROR
+              }
+            event match {
+              case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
+                if (!isClosed(in)) {
+                  if (!hasBeenPulled(in)) {
+                    pull(in)
+                  }
+                }
+                else failStage(new IllegalStateException("Stream finished before event was fully parsed."))
+
+              case XMLStreamConstants.START_ELEMENT =>
+                node += parser.getLocalName
+
+                instructions.foreach((e: XMLInstruction) => e match {
+                  case e@XMLExtract(`node`, _) => {
+                    val keys = getPredicateMatch(parser, e.attributes)
+                    xmlElements.add(XMLElement(e.xPath, keys, None))
+                  }
+                  case _ => {
+
+                  }
+                })
+                if (parser.hasNext) advanceParser()
+                else {
+                  completeStage()
+                }
+
+              case XMLStreamConstants.END_ELEMENT =>
+                isCharacterBuffering = false
+                update(xmlElements, node, Some(bufferedText.toString()))
+                bufferedText.clear()
+                node -= parser.getLocalName
+                if (parser.hasNext) advanceParser()
+
+              case XMLStreamConstants.CHARACTERS =>
+                val t = parser.getText()
+                if (t.trim.length > 0) {
+                  isCharacterBuffering = true
+                  bufferedText.append(t)
+                }
+                if (parser.hasNext) advanceParser()
+
+              case XML_ERROR =>
+                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                if (isAvailable(out)) {
+                  push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+                }
+              case x =>
+                if (parser.hasNext) advanceParser()
+            }
+          }
+          else {
+            completeStage()
+          }
+        }
+      }
+
   }
+
 }

@@ -16,17 +16,7 @@
 
 package uk.gov.hmrc.akka.xml
 
-import org.scalatest.FlatSpec
-
-
 /**
-  * Created by abhishek on 23/09/16.
+  * Created by abhishek on 02/12/16.
   */
-class XmlParserSpec extends FlatSpec  {
-
-  "XmlParser#helloAkka" should "return HelloAkka" in {
-
-   1 === 1
-  }
-
-}
+case class XMLElement(xPath: Seq[String], attributes: Map[String, String] = Map.empty, value: Option[String] = None)
