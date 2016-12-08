@@ -19,7 +19,7 @@ package uk.gov.hmrc.akka.xml
 /**
   * Created by abhishek on 02/12/16.
   */
-trait XMLInstruction
+sealed trait XMLInstruction
 
 case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.empty) extends XMLInstruction
 

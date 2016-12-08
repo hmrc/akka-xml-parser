@@ -35,6 +35,7 @@ import scala.util.Try
 object AkkaXMLParser {
   val XML_ERROR = 258
   val MALFORMED_STATUS = "Malformed"
+
   /**
     * Parser Flow that takes a stream of ByteStrings and parses them to (ByteString, Set[XMLElement]).
     */
@@ -61,7 +62,6 @@ object AkkaXMLParser {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             array = grab(in).toArray
-            println("grab ---    " + new String(array))
             byteBuffer ++= array
             parser.getInputFeeder.feedInput(array, 0, array.length)
             advanceParser()
@@ -109,10 +109,8 @@ object AkkaXMLParser {
               }
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                println("EVENT_INCOMPLETE")
                 if (!isClosed(in)) {
                   if (!hasBeenPulled(in)) {
-                    println("PULL")
                     pull(in)
                   }
                 }
@@ -120,12 +118,11 @@ object AkkaXMLParser {
 
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
-                println("START_ELEMENT - " + node)
-
                 instructions.foreach((e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _) => {
+                  case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty => {
                     val keys = getPredicateMatch(parser, e.attributes)
-                    xmlElements.add(XMLElement(e.xPath, keys, None))
+                    val ele = XMLElement(e.xPath, keys, None)
+                    xmlElements.add(ele)
                   }
                   case _ => {
 
@@ -139,16 +136,12 @@ object AkkaXMLParser {
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
                 update(xmlElements, node, Some(bufferedText.toString()))
-                println("END_ELEMENT - " + bufferedText.toString())
                 bufferedText.clear()
                 node -= parser.getLocalName
-                println("END_ELEMENT" + node)
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
                 val t = parser.getText()
-                println("CHARACTERS - " + t)
-
                 if (t.trim.length > 0) {
                   isCharacterBuffering = true
                   bufferedText.append(t)
