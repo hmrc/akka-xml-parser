@@ -52,9 +52,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       a ++ b
     })
 
-  "AkkaXMLParser#parser" should "pass the original XML through to any iteratees" in {
-    1 === 1
-  }
+  behavior of "AkkaXMLParser#parser"
 
   it should "extract a single value from a valid xml" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
