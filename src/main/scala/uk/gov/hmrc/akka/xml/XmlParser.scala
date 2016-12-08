@@ -35,6 +35,7 @@ import scala.util.Try
 object AkkaXMLParser {
   val XML_ERROR = 258
   val MALFORMED_STATUS = "Malformed"
+
   /**
     * Parser Flow that takes a stream of ByteStrings and parses them to (ByteString, Set[XMLElement]).
     */
@@ -117,11 +118,11 @@ object AkkaXMLParser {
 
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
-
                 instructions.foreach((e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _) => {
+                  case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty => {
                     val keys = getPredicateMatch(parser, e.attributes)
-                    xmlElements.add(XMLElement(e.xPath, keys, None))
+                    val ele = XMLElement(e.xPath, keys, None)
+                    xmlElements.add(ele)
                   }
                   case _ => {
 

@@ -27,16 +27,16 @@ trait StreamHelper {
 
   def update(xmlElementsLst: scala.collection.mutable.Set[XMLElement],
              path: ArrayBuffer[String], newValue: Some[String]): Unit = {
-    val xmlElementsList = xmlElementsLst.collect {
-      case e: XMLElement if (e.xPath == path.toList) => e
+    val elementsWithoutAnyValueForGivenPath = xmlElementsLst.collect {
+      case e: XMLElement if (e.xPath == path.toList) && (e.value == None) => e
     }
 
-    if (!xmlElementsList.isEmpty) {
-      val last = xmlElementsList.last
-      val newElement = last.copy(value = newValue)
-      xmlElementsLst.remove(last)
+    elementsWithoutAnyValueForGivenPath.map((ele: XMLElement) => {
+      xmlElementsLst.remove(ele)
+      val newElement = ele.copy(value = newValue)
       xmlElementsLst.add(newElement)
-    }
+    })
+
   }
 
   def getCompletedXMLElements(xmlElementsLst: scala.collection.mutable.Set[XMLElement]):

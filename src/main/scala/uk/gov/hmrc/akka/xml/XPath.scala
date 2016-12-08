@@ -16,17 +16,11 @@
 
 package uk.gov.hmrc.akka.xml
 
-import org.scalatest.FlatSpec
-
-
 /**
-  * Created by abhishek on 23/09/16.
+  * Created by abhishek on 08/12/16.
   */
-class XmlParserSpec extends FlatSpec  {
+object XPath {
 
-  "XmlParser#helloAkka" should "return HelloAkka" in {
-
-   1 === 1
-  }
+  def apply(xpath: String): Seq[String] = xpath.split('/').filterNot(_.isEmpty)
 
 }
