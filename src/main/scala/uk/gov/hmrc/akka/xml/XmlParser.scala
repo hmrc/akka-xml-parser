@@ -70,7 +70,7 @@ object AkkaXMLParser {
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
             if (!parser.hasNext) {
-              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              push(out, (ByteString(array), getCompletedXMLElements(xmlElements).toSet))
               completeStage()
             }
             else if (isAvailable(out)) {
@@ -124,23 +124,43 @@ object AkkaXMLParser {
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
                   }
-                  case _ => {
-
+                  case e: XMLUpdate if e.xPath.dropRight(1) == node => {
+                  }
+                  case x => {
                   }
                 })
                 if (parser.hasNext) advanceParser()
-                else {
-                  completeStage()
-                }
 
               case XMLStreamConstants.END_ELEMENT =>
+                //TODO : Optimize this step so that we buffering data only for elements that we need
                 isCharacterBuffering = false
-                update(xmlElements, node, Some(bufferedText.toString()))
+                instructions.foreach((e: XMLInstruction) => {
+                  e match {
+                    case e@XMLExtract(`node`, _) => {
+                      update(xmlElements, node, Some(bufferedText.toString()))
+                    }
+                    case e: XMLUpdate if e.xPath.dropRight(1) == node => {
+                      val input = getUpdatedElement(e.xPath, e.attributes, e.value, parser.isEmptyElement)(parser).getBytes
+                      val offsetMod = input.length
+
+                      println(new String(input) )
+
+                      //                      byteBuffer ++= "hello".getBytes()
+
+                      println("0000000000" + new String(byteBuffer.toArray))
+
+                    }
+                    case x => {
+                      println(x)
+                    }
+                  }
+                })
                 bufferedText.clear()
                 node -= parser.getLocalName
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
+                //TODO : Optimize this step so that we buffering data only for elements that we need
                 val t = parser.getText()
                 if (t.trim.length > 0) {
                   isCharacterBuffering = true

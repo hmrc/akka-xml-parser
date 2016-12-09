@@ -24,7 +24,7 @@ import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.iteratee.{Enumeratee, Enumerator, Iteratee}
-
+import akka.pattern.pipe
 import scala.concurrent.Future
 
 /**
@@ -34,23 +34,12 @@ class XMLParserXmlExtractSpec extends FlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
-  with Eventually {
+  with Eventually
+  with XMLParserFixtures {
 
-  implicit val system = ActorSystem("XMLParser")
-  implicit val mat = ActorMaterializer()
+  val f = fixtures
 
-  def parse(instructions: Set[XMLInstruction]) = Flow[ByteString]
-    .via(AkkaXMLParser.parser(instructions))
-    .via(flow)
-    .toMat(collectXMLElements)(Keep.right)
-
-
-  def flow = Flow[(ByteString, Set[XMLElement])].map(x => x._2)
-
-  def collectXMLElements: Sink[Set[XMLElement], Future[Set[XMLElement]]] =
-    Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)((a, b) => {
-      a ++ b
-    })
+  import f._
 
   behavior of "AkkaXMLParser#parser"
 
@@ -58,7 +47,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")))
     }
   }
@@ -70,7 +59,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       ByteString("45</id></header></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")))
     }
   }
@@ -82,7 +71,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       ByteString("45</id><name>Hello</name></header></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")))
     }
   }
@@ -90,17 +79,16 @@ class XMLParserXmlExtractSpec extends FlatSpec
   it should "handle a malformed xml with no available metadata" in {
     val source = Source.single(ByteString("malformed"))
 
-    whenReady(source.runWith(parse(Set.empty))) { r =>
+    whenReady(source.runWith(parseToXMLElements(Set.empty))) { r =>
       r shouldBe Set(XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
     }
   }
-
 
   it should "return any already extracted metadata on a malformed xml" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
@@ -113,7 +101,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source(List(ByteString("<xml><header><id>12345</id>"), ByteString("</xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
@@ -125,7 +113,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
     val paths = Set.empty[XMLInstruction]
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
@@ -136,7 +124,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("<xml><body><element Attribute=\"Test\">elementText</element></body></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "body", "element"), Map("Attribute" -> "Test")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "body", "element"), Map("Attribute" -> "Test"), Some("elementText")
         )
@@ -148,7 +136,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("<xml Attribute=\"Test\" Attribute2=\"Test2\"></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("Attribute2" -> "Test2")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("Attribute2" -> "Test2"), Some(""))
       )
@@ -159,7 +147,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("<xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map("Attribute" -> "notTest")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set.empty
     }
   }
@@ -169,7 +157,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       ByteString("o><bar>test</bar></body></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("type" -> "test")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml"), Map("type" -> "test"), Some("")))
     }
   }
@@ -179,7 +167,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       ByteString("dy><foo>test</fo"), ByteString("o><bar>test</bar></body></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
   }
@@ -188,7 +176,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("<gt:GovTalkMessage xmlns:gt=\"http://www.govtalk.gov.uk/CM/envelope\"><gt:EnvelopeVersion>2.0</gt:EnvelopeVersion></gt:GovTalkMessage>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
   }
@@ -198,7 +186,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       ByteString("dy><foo>test</fo"), ByteString("o><bar>test</bar></body></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")))
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some(""))
       )
@@ -215,7 +203,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLExtract(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
         XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
@@ -234,7 +222,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLExtract(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
         // We shouldn't see this one - XMLElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
@@ -254,7 +242,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       //XMLExtract(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some(""))
         // We shouldn't see this one - XMLElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
@@ -274,7 +262,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       //XMLExtract(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
         XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
@@ -324,7 +312,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"), Map(), Some("12345678"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe expected
     }
   }
@@ -351,7 +339,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some(""))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe expected
     }
   }
@@ -380,7 +368,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe expected
     }
   }
@@ -410,7 +398,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe expected
     }
   }
@@ -437,7 +425,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       XMLElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey5"), Some("Retry5"))
     )
 
-    whenReady(source.runWith(parse(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe expected
     }
   }
