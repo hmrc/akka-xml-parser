@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.akka.xml
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
@@ -25,6 +26,7 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.iteratee.{Enumeratee, Enumerator, Iteratee}
 import akka.pattern.pipe
+
 import scala.concurrent.Future
 
 /**
@@ -127,6 +129,10 @@ class XMLParserXmlExtractSpec extends FlatSpec
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
     }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+    }
   }
 
   it should "extract bytestring when available metadata if the xml is malformed after the first chunk" in {
@@ -139,7 +145,11 @@ class XMLParserXmlExtractSpec extends FlatSpec
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
     }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+    }
   }
+
   it should "return a malformed status if an error occurs in the middle of a chunk, leaving unprocessed bytes" in {
     val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
     val paths = Set.empty[XMLInstruction]
@@ -148,6 +158,10 @@ class XMLParserXmlExtractSpec extends FlatSpec
       r shouldBe Set(
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/></header>"
     }
   }
 
@@ -190,6 +204,16 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml"), Map("type" -> "test"), Some("")))
+    }
+    println()
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+
+      println()
+      println(r.utf8String)
+      println("<xml type=\"test\"><body><foo>test</foo><bar>test</bar></body></xml>")
+
+      r.utf8String shouldBe "<xml type=\"test\"><body><foo>test</foo><bar>test</bar></body></xml>"
     }
   }
 
@@ -259,6 +283,12 @@ class XMLParserXmlExtractSpec extends FlatSpec
         // We shouldn't see this one - XMLElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
         XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
     }
   }
 
