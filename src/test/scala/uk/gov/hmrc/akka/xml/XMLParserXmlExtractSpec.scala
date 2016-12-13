@@ -76,6 +76,19 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "extract correct bytes when the ID in the bytes are split and there are other elements at the same level" in {
+    val source = Source(List(ByteString("<xml><header><i"),
+      ByteString("d>12"),
+      ByteString("3"),
+      ByteString("45</id><name>Hello</name></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
+    }
+  }
+
+
   it should "handle a malformed xml with no available metadata" in {
     val source = Source.single(ByteString("malformed"))
 
@@ -95,7 +108,14 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "return bytestring when any already extracted metadata on a malformed xml" in {
+    val source = Source.single(ByteString("<xml><header><id>12345</id></xml>"))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+    }
+  }
 
   it should "extract available metadata if the xml is malformed after the first chunk" in {
     val source = Source(List(ByteString("<xml><header><id>12345</id>"), ByteString("</xml>")))
@@ -109,6 +129,17 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "extract bytestring when available metadata if the xml is malformed after the first chunk" in {
+    val source = Source(List(ByteString("<xml><header><id>12345</id>"), ByteString("</xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+      )
+    }
+  }
   it should "return a malformed status if an error occurs in the middle of a chunk, leaving unprocessed bytes" in {
     val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
     val paths = Set.empty[XMLInstruction]

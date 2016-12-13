@@ -46,7 +46,8 @@ object AkkaXMLParser {
 
   private class StreamingXmlParser(instructions: Set[XMLInstruction])
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
-      with StreamHelper {
+      with StreamHelper
+      with ParsingDataFunctions {
     val in: Inlet[ByteString] = Inlet("XMLParser.in")
     val out: Outlet[(ByteString, Set[XMLElement])] = Outlet("XMLParser.out")
     override val shape: FlowShape[ByteString, (ByteString, Set[XMLElement])] = FlowShape(in, out)
@@ -62,6 +63,8 @@ object AkkaXMLParser {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             array = grab(in).toArray
+            chunkSize = array.length
+            byteBuffer.clear()
             byteBuffer ++= array
             parser.getInputFeeder.feedInput(array, 0, array.length)
             advanceParser()
@@ -82,24 +85,29 @@ object AkkaXMLParser {
         setHandler(out, new OutHandler {
           override def onPull(): Unit = {
             if (!isClosed(in)) {
+              println("wwwwwwwwwwwww" + new String(byteBuffer.toArray))
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               advanceParser()
               byteBuffer.clear()
             }
             else {
+              println("rrrrrrrrrrr")
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              byteBuffer.clear()
               completeStage()
+              byteBuffer.clear()
             }
           }
         })
 
         var array = Array[Byte]()
+        var chunkSize = 0
         val node = ArrayBuffer[String]()
         val byteBuffer = ArrayBuffer[Byte]()
         val xmlElements = mutable.Set[XMLElement]()
         private var isCharacterBuffering = false
         private val bufferedText = new StringBuilder
+        //List to keep track of completed instructions between iterations
+        val completedInstructions = mutable.HashSet[XMLInstruction]()
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
@@ -107,6 +115,10 @@ object AkkaXMLParser {
               .getOrElse {
                 XML_ERROR
               }
+
+            val (start, end) = getBounds(parser)
+            val isEmptyElement = parser.isEmptyElement
+
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
                 if (!isClosed(in)) {
@@ -124,15 +136,24 @@ object AkkaXMLParser {
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
                   }
-                  case e: XMLUpdate if e.xPath.dropRight(1) == node => {
+                  case e@XMLUpdate(`node`, value, attributes, _) => {
+                    val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement)(parser).getBytes
+                    val newBytes = getHeadAndTail(array, start, end, input)
+                    println(start + "66666666" + new String(byteBuffer.toArray))
+                    byteBuffer.slice(start, byteBuffer.length)
+                    byteBuffer ++= newBytes._1
+                    println("77777777" + new String(byteBuffer.toArray))
                   }
                   case x => {
+
+                    //println(x)
+
                   }
                 })
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
-                //TODO : Optimize this step so that we buffering data only for elements that we need
+                //TODO : Optimize this step so that we buffer data only for elements that we need
                 isCharacterBuffering = false
                 instructions.foreach((e: XMLInstruction) => {
                   e match {
@@ -140,18 +161,24 @@ object AkkaXMLParser {
                       update(xmlElements, node, Some(bufferedText.toString()))
                     }
                     case e: XMLUpdate if e.xPath.dropRight(1) == node => {
-                      val input = getUpdatedElement(e.xPath, e.attributes, e.value, parser.isEmptyElement)(parser).getBytes
-                      val offsetMod = input.length
+                      if (e.isUpsert) {
+                        val input = getUpdatedElement(e.xPath, e.attributes, e.value, true)(parser).getBytes
+                        val newBytes: Array[Byte] = insertBytes(array, start, input)
+                        byteBuffer.remove(byteBuffer.length - chunkSize, chunkSize)
+                        byteBuffer ++= newBytes
 
-                      println(new String(input) )
+                      } else {
 
-                      //                      byteBuffer ++= "hello".getBytes()
-
-                      println("0000000000" + new String(byteBuffer.toArray))
-
+                        //byteBuffer.remove(byteBuffer.length - chunkSize, chunkSize)
+                        val tail = array.slice(end, array.length)
+                        println("33333333333333" + new String(tail))
+                        byteBuffer ++= tail
+                        println("4444444444444" + new String(byteBuffer.toArray))
+                        //byteBuffer.insertAll(0, array)
+                        println("---------------------" + new String(byteBuffer.toArray))
+                      }
                     }
                     case x => {
-                      println(x)
                     }
                   }
                 })
@@ -160,13 +187,27 @@ object AkkaXMLParser {
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
-                //TODO : Optimize this step so that we buffering data only for elements that we need
-                val t = parser.getText()
-                if (t.trim.length > 0) {
-                  isCharacterBuffering = true
-                  bufferedText.append(t)
-                }
+                //TODO : Optimize this step so that we buffer data only for elements that we need
+                instructions.foreach((e: XMLInstruction) => {
+                  e match {
+                    case e@XMLExtract(`node`, _) => {
+                      val t = parser.getText()
+                      if (t.trim.length > 0) {
+                        isCharacterBuffering = true
+                        bufferedText.append(t)
+                      }
+                    }
+                    case e@XMLUpdate(`node`, _, _, _) => {
+                      //array = getTailBytes(array, end - start)
+                    }
+                    case _ => {
+
+                    }
+                  }
+
+                })
                 if (parser.hasNext) advanceParser()
+
 
               case XML_ERROR =>
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
@@ -182,6 +223,14 @@ object AkkaXMLParser {
           }
         }
       }
+
+    private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
+      val start = reader.getLocationInfo.getStartingByteOffset.toInt
+      (
+        if (start == 1) 0 else start,
+        reader.getLocationInfo.getEndingByteOffset.toInt
+        )
+    }
 
   }
 
