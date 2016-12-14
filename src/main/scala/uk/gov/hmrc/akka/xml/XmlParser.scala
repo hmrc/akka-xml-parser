@@ -104,6 +104,7 @@ object AkkaXMLParser {
 
         var array = Array[Byte]()
         var processedInputPointer = 0
+        var offset = 0
 
         val node = ArrayBuffer[String]()
         val byteBuffer = ArrayBuffer[Byte]()
@@ -132,8 +133,9 @@ object AkkaXMLParser {
                     if (array.length > 0) {
                       val newBytes = array.slice(0, start)
                       byteBuffer ++= newBytes
-                      processedInputPointer = end
+                      processedInputPointer = start
                       offsetByteBuffer ++= array.slice(newBytes.length, end)
+                      offset = offsetByteBuffer.length
                     }
                     pull(in)
                   }
@@ -151,10 +153,11 @@ object AkkaXMLParser {
                   case e@XMLUpdate(`node`, value, attributes, _) => {
                     //TODO : Refactor the below code
                     val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement)(parser).getBytes
-                    val newBytes = getHeadAndTail(array, start, end, input)
-                    byteBuffer.slice(start, byteBuffer.length)
+                    val newBytes = getHeadAndTail(array, start - processedInputPointer, end - processedInputPointer, input, offset)
                     byteBuffer ++= newBytes._1
                     array = newBytes._2
+                    processedInputPointer = end
+                    offset = 0
                   }
                   case x => {
                   }
@@ -171,9 +174,11 @@ object AkkaXMLParser {
                     }
                     case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert => {
                       val input = getUpdatedElement(e.xPath, e.attributes, e.value, true)(parser).getBytes
-                      val newBytes = insertBytes(array, (start - processedInputPointer), input)
-                      array = array.slice(start - processedInputPointer, array.length)
+                      val newBytes = insertBytes(array, start - (processedInputPointer + offset), input)
+                      array = array.slice(array.length - (end - start), array.length)
                       byteBuffer ++= newBytes
+                      processedInputPointer = end
+                      offset = 0
                     }
                     case x => {
                     }
@@ -193,6 +198,7 @@ object AkkaXMLParser {
                       bufferedText.append(t)
                     }
                     case e@XMLUpdate(`node`, _, _, _) => {
+                      processedInputPointer = end
                       array = getTailBytes(array, end - start)
                     }
                     case _ => {
@@ -202,7 +208,6 @@ object AkkaXMLParser {
 
                 })
                 if (parser.hasNext) advanceParser()
-
 
               case XML_ERROR =>
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))

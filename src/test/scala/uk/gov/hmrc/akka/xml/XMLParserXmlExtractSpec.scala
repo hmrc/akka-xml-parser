@@ -63,9 +63,27 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
+      println(r.utf8String)
+      println("<xml><header><id>12345</id></header></xml>")
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
   }
+
+  it should "extract the bytes are split and there are other elements at the same level" in {
+    val source = Source(List(ByteString("<xml><header><id>12"),
+      ByteString("345</id><name>"),
+      ByteString("He"),
+      ByteString("llo</name></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")))
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
+    }
+  }
+
 
   it should "extract the ID when the bytes are split and there are other elements at the same level" in {
     val source = Source(List(ByteString("<xml><header><i"),
