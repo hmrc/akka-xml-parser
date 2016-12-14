@@ -83,9 +83,8 @@ trait StreamHelper {
     } + ">"
     val value = elemText.getOrElse("")
     val endElement = getEndElement(xPath, prefix)
-    s"$startElement$value$endElement"
-//    if (isEmptyElement) s"$startElement$value$endElement"
-//    else s"$startElement$value"
+    if (isEmptyElement) s"$startElement$value$endElement"
+    else s"$startElement$value"
   }
 
   private def getPrefix(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = Option(reader.getPrefix) match {

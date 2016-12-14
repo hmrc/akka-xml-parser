@@ -63,8 +63,6 @@ object AkkaXMLParser {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             array = grab(in).toArray
-            //chunkSize = array.length
-            //byteBuffer ++= array
             parser.getInputFeeder.feedInput(array, 0, array.length)
             advanceParser()
           }
@@ -87,21 +85,31 @@ object AkkaXMLParser {
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               advanceParser()
               byteBuffer.clear()
+              if (offsetByteBuffer.length > 0) {
+                byteBuffer ++= offsetByteBuffer
+                offsetByteBuffer.clear()
+              }
             }
             else {
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              completeStage()
               byteBuffer.clear()
+              if (offsetByteBuffer.length > 0) {
+                byteBuffer ++= offsetByteBuffer
+                offsetByteBuffer.clear()
+              }
+              completeStage()
             }
           }
         })
 
         var array = Array[Byte]()
-        var pointer = 0
+        var processedInputPointer = 0
+
         val node = ArrayBuffer[String]()
         val byteBuffer = ArrayBuffer[Byte]()
         val offsetByteBuffer = ArrayBuffer[Byte]()
         val xmlElements = mutable.Set[XMLElement]()
+
         private var isCharacterBuffering = false
         private val bufferedText = new StringBuilder
         //List to keep track of completed instructions between iterations
@@ -113,7 +121,6 @@ object AkkaXMLParser {
               .getOrElse {
                 XML_ERROR
               }
-
             val (start, end) = getBounds(parser)
             val isEmptyElement = parser.isEmptyElement
 
@@ -121,12 +128,13 @@ object AkkaXMLParser {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
                 if (!isClosed(in)) {
                   if (!hasBeenPulled(in)) {
-                    byteBuffer ++= offsetByteBuffer
-                    val newBytes = array.slice(0, start - (pointer + offsetByteBuffer.length))
-                    byteBuffer ++= newBytes
-                    pointer += newBytes.length
-                    offsetByteBuffer.clear()
-                    offsetByteBuffer ++= array.slice(newBytes.length, end)
+                    //TODO : Refactor this code
+                    if (array.length > 0) {
+                      val newBytes = array.slice(0, start)
+                      byteBuffer ++= newBytes
+                      processedInputPointer = end
+                      offsetByteBuffer ++= array.slice(newBytes.length, end)
+                    }
                     pull(in)
                   }
                 }
@@ -141,10 +149,12 @@ object AkkaXMLParser {
                     xmlElements.add(ele)
                   }
                   case e@XMLUpdate(`node`, value, attributes, _) => {
+                    //TODO : Refactor the below code
                     val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement)(parser).getBytes
                     val newBytes = getHeadAndTail(array, start, end, input)
                     byteBuffer.slice(start, byteBuffer.length)
                     byteBuffer ++= newBytes._1
+                    array = newBytes._2
                   }
                   case x => {
                   }
@@ -159,17 +169,11 @@ object AkkaXMLParser {
                     case e@XMLExtract(`node`, _) => {
                       update(xmlElements, node, Some(bufferedText.toString()))
                     }
-                    case e: XMLUpdate if e.xPath.dropRight(1) == node => {
-                      if (e.isUpsert) {
-                        val input = getUpdatedElement(e.xPath, e.attributes, e.value, true)(parser).getBytes
-                        val newBytes: Array[Byte] = insertBytes(array, start, input)
-                        //byteBuffer.remove(byteBuffer.length - chunkSize, chunkSize)
-                        byteBuffer ++= newBytes
-
-                      } else {
-                        val tail = array.slice(end, array.length)
-                        byteBuffer ++= tail
-                      }
+                    case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert => {
+                      val input = getUpdatedElement(e.xPath, e.attributes, e.value, true)(parser).getBytes
+                      val newBytes = insertBytes(array, (start - processedInputPointer), input)
+                      array = array.slice(start - processedInputPointer, array.length)
+                      byteBuffer ++= newBytes
                     }
                     case x => {
                     }
@@ -185,13 +189,11 @@ object AkkaXMLParser {
                   e match {
                     case e@XMLExtract(`node`, _) => {
                       val t = parser.getText()
-                      if (t.trim.length > 0) {
-                        isCharacterBuffering = true
-                        bufferedText.append(t)
-                      }
+                      isCharacterBuffering = true
+                      bufferedText.append(t)
                     }
                     case e@XMLUpdate(`node`, _, _, _) => {
-                      //array = getTailBytes(array, end - start)
+                      array = getTailBytes(array, end - start)
                     }
                     case _ => {
 
@@ -211,9 +213,6 @@ object AkkaXMLParser {
               case x =>
                 if (parser.hasNext) advanceParser()
             }
-          }
-          else {
-            completeStage()
           }
         }
       }

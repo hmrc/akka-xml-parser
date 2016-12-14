@@ -43,9 +43,20 @@ trait XMLParserFixtures {
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
+    def parseToPrint(instructions: Set[XMLInstruction]) = Flow[ByteString]
+      .via(AkkaXMLParser.parser(instructions))
+        .via(flowByteStringPrint)
+      .toMat(Sink.ignore)(Keep.right)
+
     def flowXMLElements = Flow[(ByteString, Set[XMLElement])].map(x => x._2)
 
     def flowByteString = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
+
+    def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => {
+      println("response bytestring : " + x._1.utf8String)
+      println("response element : " + x._2)
+      x._1
+    })
 
     def collectXMLElements: Sink[Set[XMLElement], Future[Set[XMLElement]]] =
       Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)((a, b) => {
