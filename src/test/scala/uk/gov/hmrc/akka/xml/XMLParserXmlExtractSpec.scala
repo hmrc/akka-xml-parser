@@ -63,8 +63,6 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      println(r.utf8String)
-      println("<xml><header><id>12345</id></header></xml>")
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
   }
@@ -278,7 +276,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\" " +
         "xsi:schemaLocation=\"http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd\" " +
         "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><bo" +
-      "dy><foo>test</fo" + "o><bar>test</bar></body></xml>"
+        "dy><foo>test</fo" + "o><bar>test</bar></body></xml>"
     }
   }
 
