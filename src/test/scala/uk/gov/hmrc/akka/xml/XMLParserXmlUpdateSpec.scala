@@ -103,8 +103,6 @@ class XMLParserXmlUpdateSpec
       ByteString("r><foo"), ByteString(">foo</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
-      println("<xml><header><foo>bar</foo></header></xml>")
       r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
@@ -114,9 +112,6 @@ class XMLParserXmlUpdateSpec
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
-      println("<xml><header><foo>bar</foo></header></xml>")
-
       r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
 
@@ -130,37 +125,37 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
+  //TODO: Check if we need to program for this scenario with Rob
 
-  it should "extract the inserted value when it is updated" in {
-    val source = Source.single(ByteString("<xml><body><foo>foo</foo></body></xml>"))
-    val instructions = Set[XMLInstruction](
-      XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
-    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-    }
-  }
-
-
-//  it should "extract the inserted value when an empty tag is updated" in {
-//    val source = Source.single(ByteString("<xml><body><foo></foo></body></xml>"))
-//    val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
-//
-//    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-//      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-//    }
-//
-//  }
-//
-//  it should "extract the inserted value when a self closing tag is updated" in {
-//    val source = Source.single(ByteString("<xml><body><foo/></body></xml>"))
-//    val instructions = Set[XMLInstruction](
-//      XMLUpdate(Seq("xml", "body", "foo"), Some("bar"))
-//    )
-//
-//    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-//      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-//    }
-//  }
+  //  it should "extract the inserted value when it is updated" in {
+  //    val source = Source.single(ByteString("<xml><body><foo>foo</foo></body></xml>"))
+  //    val instructions = Set[XMLInstruction](
+  //      XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
+  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
+  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
+  //    }
+  //  }
+  //
+  //
+  //  it should "extract the inserted value when an empty tag is updated" in {
+  //    val source = Source.single(ByteString("<xml><body><foo></foo></body></xml>"))
+  //    val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
+  //
+  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
+  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
+  //    }
+  //  }
+  //
+  //  it should "extract the inserted value when a self closing tag is updated" in {
+  //    val source = Source.single(ByteString("<xml><body><foo/></body></xml>"))
+  //    val instructions = Set[XMLInstruction](
+  //      XMLUpdate(Seq("xml", "body", "foo"), Some("bar"))
+  //    )
+  //
+  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
+  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
+  //    }
+  //  }
 
   it should "update an existing element with new attributes when they are specified" in {
     val source = Source.single(ByteString("<xml><bar>bar</bar></xml>"))
@@ -171,8 +166,6 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe expected
     }
   }
-
-
 
   it should "insert an element with attributes where it does not exist" in {
     val source = Source.single(ByteString("<xml></xml>"))
@@ -196,23 +189,70 @@ class XMLParserXmlUpdateSpec
     }
   }
 
-  //  it should "insert multiple elements even if they rely on each other" in {
-  //    val source = Source.single(ByteString("<xml><foo><bar>bar</bar></foo></xml>"))
-  //    val instructions = Set[XMLInstruction](
-  //      XMLUpdate(XPath("xml/foo/one"), isUpsert = true),
-  //      XMLUpdate(XPath("xml/foo/one/two"), Some("two"), Map("attribute" -> "value"), isUpsert = true)
-  //    )
-  //    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
-  //
-  ////    whenReady(source.runWith(parseToPrint(instructions))) { r =>
-  ////    }
-  //
-  //    whenReady(source.runWith(parseToByteString(instructions))) { r =>
-  //      println(r.utf8String)
-  //      println(expected)
-  //      r.utf8String shouldBe expected
-  //    }
-  //  }
+  it should "insert multiple elements when root element ('one') is not present" in {
+    val source = Source.single(ByteString("<xml><foo><bar>bar</bar></foo></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""), isUpsert = true)
+    )
+    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe expected
+    }
+  }
+
+  it should "update multiple elements when root element ('one') is present" in {
+    val source = Source.single(ByteString("<xml><foo><bar>bar</bar><one></one></foo></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""))
+    )
+    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe expected
+    }
+  }
+
+  it should "update multiple elements when root element ('one') is an empty present" in {
+    val source = Source.single(ByteString("<xml><foo><bar>bar</bar><one/></foo></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""))
+    )
+    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe expected
+    }
+  }
+
+  it should "insert multiple elements with multiple instructions" in {
+    val source = Source.single(ByteString("<xml><foo></foo></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("xml/foo/one"), Some("one"), isUpsert = true),
+      XMLUpdate(XPath("xml/foo/two"), Some("two"), isUpsert = true)
+    )
+    val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
+      println(expected)
+      r.utf8String shouldBe expected
+    }
+  }
+
+
+  it should "update multiple elements with multiple instructions" in {
+    val source = Source.single(ByteString("<xml><foo><one></one><two></two></foo></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("xml/foo/one"), Some("one")),
+      XMLUpdate(XPath("xml/foo/two"), Some("two"))
+    )
+    val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe expected
+    }
+  }
 
   it should "insert elements with namespaces" in {
     val source = Source.single(ByteString("""<ns:xml xmlns:ns="test"></ns:xml>"""))
