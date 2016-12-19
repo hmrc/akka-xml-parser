@@ -67,6 +67,36 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "extract a single value when the bytes are split and element is empty" in {
+    val source = Source(List(ByteString("<xml><header><i"),
+      ByteString("d>"),
+      ByteString("</id></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("")))
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+    }
+  }
+
+  it should "extract a single value when the bytes are split and element is whitespace" in {
+    val source = Source(List(ByteString("<xml><header><i"),
+      ByteString("d>  "),
+      ByteString("  </id></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(XMLElement(Seq("xml", "header", "id"), Map.empty, Some("")))
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>    </id></header></xml>"
+    }
+  }
+
   it should "extract the bytes are split and there are other elements at the same level" in {
     val source = Source(List(ByteString("<xml><header><id>12"),
       ByteString("345</id><name>"),

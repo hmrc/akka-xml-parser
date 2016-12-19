@@ -17,14 +17,6 @@
 package uk.gov.hmrc.akka.xml
 
 /**
-  * Created by abhishek on 02/12/16.
+  * Created by abhishek on 19/12/16.
   */
-sealed trait XMLInstruction
-
-case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.empty) extends XMLInstruction
-
-case class XMLUpdate(xPath: Seq[String], value: Option[String] = None, attributes: Map[String, String] = Map.empty, isUpsert: Boolean = false) extends XMLInstruction
-
-case class XMLValidate(start: Seq[String], end: Seq[String], f: String => Option[Throwable]) extends XMLInstruction
-
-//case class XMLDelete(xPath: Seq[String]) extends XMLInstruction
+class XMLValidationException extends Exception("XML validation was not completed.")
