@@ -77,8 +77,6 @@ object AkkaXMLParser {
                 byteBuffer ++= incompleteBytes
                 incompleteBytes.clear()
               }
-              if (validators.size > 0)
-                throw new XMLValidationException
               if (node.length > 0)
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
@@ -102,11 +100,14 @@ object AkkaXMLParser {
               }
             }
             else {
-              if (validators.size > 0)
+              println(validators.size)
+              println(instructions.count(x=> x.isInstanceOf[XMLValidate]))
+
+              if (validators.size != instructions.count(x=> x.isInstanceOf[XMLValidate]) && validators.forall(x => !x._2._2)) {
                 throw new XMLValidationException
+              }
               if (node.length > 0)
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               byteBuffer.clear()
               if (incompleteBytes.length > 0) {
@@ -126,8 +127,7 @@ object AkkaXMLParser {
         val byteBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
         val xmlElements = mutable.Set[XMLElement]()
-        //Mutable map to contain extracted data for validation
-        val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
+        val validators = mutable.Map[XMLValidate, (ArrayBuffer[Byte], Boolean)]()
 
         private var isCharacterBuffering = false
         private val bufferedText = new StringBuilder
@@ -179,8 +179,11 @@ object AkkaXMLParser {
                       end - (pointer))
                     if (!isEmptyElement) {
                       val ele = validators.get(e) match {
-                        case Some(x) => (e, x ++= newBytes)
-                        case None => (e, ArrayBuffer.empty ++= newBytes)
+                        case Some(x) => {
+                          val t = (x._1 ++ newBytes)
+                          (e, (t, false))
+                        }
+                        case None => (e, (ArrayBuffer.empty ++= newBytes, false))
                       }
                       validators += (ele)
                     }
@@ -192,7 +195,7 @@ object AkkaXMLParser {
 
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
-                instructions.foreach((e: XMLInstruction) => {
+                instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _) => {
                       update(xmlElements, node, Some(bufferedText.toString()))
@@ -205,17 +208,22 @@ object AkkaXMLParser {
                       incompleteBytesLength = 0
                       pointer = end
                     }
-                    case e: XMLValidate if e.end == node.slice(0, e.end.length) => {
+                    case e: XMLValidate if e.start == node.slice(0, e.start.length) => {
                       val newBytes = (byteBuffer.toArray ++ chunk).slice(start - (pointer),
                         end - (pointer))
                       validators.get(e) match {
-                        case Some(x) => x ++= newBytes
-                        case None => throw new XMLValidationException
+                        case Some(x) => {
+                          (x._1 ++= newBytes, true)
+                        }
+                        case None => {
+                          throw new XMLValidationException
+                        }
                       }
                       validators.foreach(t => t match {
-                        case (e@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map(throw _)
-                          validators -= e
+                        case (s@XMLValidate(_, `node`, f), testData) =>
+                          f(new String(testData._1.toArray)).map(throw _)
+                          val ele = (s, (testData._1, true))
+                          validators += (ele)
                         case x => {
                         }
                       })
@@ -247,10 +255,10 @@ object AkkaXMLParser {
                         end - (pointer))
                       val ele = validators.get(e) match {
                         case Some(x) => {
-                          val c = x ++= newBytes
-                          (e, c)
+                          val t = (x._1 ++ newBytes)
+                          (e, (t, false))
                         }
-                        case None => (e, ArrayBuffer.empty ++= newBytes)
+                        case None => (e, (ArrayBuffer.empty ++= newBytes, false))
                       }
                       validators += (ele)
                     }

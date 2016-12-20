@@ -76,12 +76,16 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
   it should "validate successfully the specified data against a supplied function" in {
     val source = Source.single(ByteString("<xml><body><foo>test</foo><bar>test</bar></body></xml>"))
-    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(new NoStackTrace {})
-    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
+    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar>") None else Some(new NoStackTrace {})
+    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "<bar>"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set.empty
     }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body></xml>"
+    }
+
   }
   it should "fail validation when the specified data does not pass the supplied validation function" in {
     val source = Source.single(ByteString("<xml><body><foo>fail</foo><bar>fail</bar></body></xml>"))
@@ -101,6 +105,9 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set.empty
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body></xml>"
     }
   }
 
@@ -153,6 +160,9 @@ class XMLParserXmlValidateSpec extends FlatSpec
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
     }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<foo>bar"
+    }
   }
 
   it should "return a malformed status if the xml isn't properly closed off with an end tag (multiple chunks)" in {
@@ -164,6 +174,9 @@ class XMLParserXmlValidateSpec extends FlatSpec
         XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
         XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
       )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
     }
   }
 

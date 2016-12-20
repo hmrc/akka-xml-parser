@@ -576,6 +576,171 @@ class XMLParserXmlExtractSpec extends FlatSpec
         r shouldBe t
       }
     }
-
   }
+//
+//  it should "tx" in {
+//
+//    val validatingFunction = (string: String) => None
+//    val source = Source.single(ByteString(
+//      """
+//        <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+//            <EnvelopeVersion>2.0</EnvelopeVersion>
+//            <Header>
+//                <MessageDetails>
+//                    <Class>HMRC-PSA-ACCT-TAX</Class>
+//                    <Qualifier>request</Qualifier>
+//                    <Function>submit</Function>
+//
+//
+//                    <CorrelationID></CorrelationID>
+//
+//
+//                    <Transformation>XML</Transformation>
+//
+//
+//
+//                </MessageDetails>
+//                <SenderDetails>
+//                    <IDAuthentication>
+//                        <SenderID>user1</SenderID>
+//                        <Authentication>
+//                            <Method>clear</Method>
+//                            <Role>Authenticate/Validate</Role>
+//                            <Value>pass</Value>
+//                        </Authentication>
+//                    </IDAuthentication>
+//
+//                </SenderDetails>
+//            </Header>
+//            <GovTalkDetails>
+//               <Keys>
+//                    <Key Type="PSAID">A1234567</Key>
+//
+//
+//            </Keys>
+//                <ChannelRouting>
+//                    <Channel>
+//                        <URI>1352</URI>
+//                        <Product>ASPIRE HMRC-VAT100-DEC</Product>
+//                        <Version>1.0</Version>
+//                    </Channel>
+//                </ChannelRouting>
+//            </GovTalkDetails>
+//            <Body>
+//                <IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/vat/vatdeclaration/2">
+//                    <IRheader>
+//                        <Keys>
+//                            <Key Type="VATRegNo">999989291</Key>
+//                        </Keys>
+//                        <PeriodID>2009-12</PeriodID>
+//                        <PeriodStart>2009-10-01</PeriodStart>
+//                        <PeriodEnd>2009-12-31</PeriodEnd>
+//                        <IRmark Type="generic">GCxuuBCQsKaqKPk42Xgl6dPVg/M=</IRmark>
+//                        <Sender>Individual</Sender>
+//                    </IRheader>
+//                    <VATDeclarationRequest>
+//                        <VATDueOnOutputs>100.00</VATDueOnOutputs>
+//                        <VATDueOnECAcquisitions>100.00</VATDueOnECAcquisitions>
+//                        <TotalVAT>200.00</TotalVAT>
+//                        <VATReclaimedOnInputs>10.00</VATReclaimedOnInputs>
+//                        <NetVAT>190.00</NetVAT>
+//                        <NetSalesAndOutputs>1000</NetSalesAndOutputs>
+//                        <NetPurchasesAndInputs>1000</NetPurchasesAndInputs>
+//                        <NetECSupplies>1000</NetECSupplies>
+//                        <NetECAcquisitions>1000</NetECAcquisitions>
+//
+//                    </VATDeclarationRequest>
+//                </IRenvelope>
+//            </Body>
+//        </GovTalkMessage>
+//      """.stripMargin))
+//    val paths = Set[XMLInstruction](
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, ENVELOPE_VERSION)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, MESSAGE_CLASS)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, QUALIFIER)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, FUNCTION)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, TRANSACTION_ID)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, CORRELATION_ID)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, RESPONSE_ENDPOINT)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, TRANSFORMATION)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, GATEWAY_TEST)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, MESSAGE_DETAILS, GATEWAY_TIMESTAMP)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, SENDER_DETAILS, ID_AUTHENTICATION, SENDER_ID)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, HEADER, SENDER_DETAILS, ID_AUTHENTICATION, AUTHENTICATION, PASSWORD)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, GOV_TALK_DETAILS, KEYS, KEY)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, GOV_TALK_DETAILS, CHANNEL_ROUTING, CHANNEL, CHANNEL_URI)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, GOV_TALK_DETAILS, CHANNEL_ROUTING, CHANNEL, PRODUCT)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, GOV_TALK_DETAILS, CHANNEL_ROUTING, CHANNEL, PRODUCT_VERSION)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST, INCLUDE_IDENTIFIERS)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST, START_DATE)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST, START_TIME)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST, END_DATE)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, STATUS_REQUEST, END_TIME)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, INCLUDE_IDENTIFIERS)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, START_DATE)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, START_TIME)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, END_DATE)),
+//      XMLExtract(Seq(GOV_TALK_MESSAGE, BODY, END_TIME)),
+//      XMLValidate(Seq("GovTalkMessage"), Seq("GovTalkMessage", "GovTalkDetails"), validatingFunction)
+//    )
+//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+//
+//      r.foreach(println(_))
+//
+//
+//      r shouldBe Set(XMLElement(Seq("GovTalkMessage", "Header", "SenderDetails", "IDAuthentication", "Authentication", "Value")
+//        , Map.empty, Some("pass")))
+//    }
+//
+//  }
+
+  val GOV_TALK_MESSAGE = "GovTalkMessage"
+  val ENVELOPE_VERSION = "EnvelopeVersion"
+  val HEADER = "Header"
+  val MESSAGE_CLASS = "Class"
+  val QUALIFIER = "Qualifier"
+  val FUNCTION = "Function"
+  val TRANSACTION_ID = "TransactionID"
+  val CORRELATION_ID = "CorrelationID"
+  val RESPONSE_ENDPOINT = "ResponseEndPoint"
+  val POLL_INTERVAL = "PollInterval"
+  val TRANSFORMATION = "Transformation"
+  val GATEWAY_TEST = "GatewayTest"
+  val GATEWAY_TIMESTAMP = "GatewayTimestamp"
+  val SENDER_ID = "SenderID"
+  val PASSWORD = "Value"
+  val INCLUDE_IDENTIFIERS = "IncludeIdentifiers"
+  val START_DATE = "StartDate"
+  val START_TIME = "StartTime"
+  val END_DATE = "EndDate"
+  val END_TIME = "EndTime"
+  val GEN_CORR_ID = "GenCorrID"
+  val GEN_TIMESTAMP = "GenTimestamp"
+
+  val MESSAGE_DETAILS = "MessageDetails"
+  val GOV_TALK_DETAILS = "GovTalkDetails"
+
+  val GOV_TALK_ERRORS = "GovTalkErrors"
+  val ERROR = "Error"
+  val RAISED_BY = "RaisedBy"
+  val ERROR_RESPONSE_DEPARTMENT = "Department"
+  val ERROR_RESPONSE_TEXT = "The submission of this document has failed due to departmental specific business logic in the Body tag."
+  val TEXT = "Text"
+
+  val SENDER_DETAILS = "SenderDetails"
+  val ID_AUTHENTICATION = "IDAuthentication"
+  val AUTHENTICATION = "Authentication"
+
+  val KEYS = "Keys"
+  val KEY = "Key"
+  val BODY = "Body"
+  val STATUS_REQUEST = "StatusRequest"
+
+  val CHANNEL_ROUTING: String = "ChannelRouting"
+  val CHANNEL: String = "Channel"
+  val CHANNEL_URI: String = "URI"
+  val PRODUCT: String = "Product"
+  val PRODUCT_VERSION: String = "Version"
+
 }
