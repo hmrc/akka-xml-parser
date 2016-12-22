@@ -87,6 +87,10 @@ class XMLParserXmlUpdateSpec
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe "<xml><header><foo>barbar</foo></header></xml>"
     }
+
+    whenReady(source.runWith(parseToPrint(instructions))) { r =>
+    }
+
   }
 
   it should "update an element where the end tag is split over multiple chunks" in {
@@ -234,8 +238,6 @@ class XMLParserXmlUpdateSpec
     val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
-      println(expected)
       r.utf8String shouldBe expected
     }
   }

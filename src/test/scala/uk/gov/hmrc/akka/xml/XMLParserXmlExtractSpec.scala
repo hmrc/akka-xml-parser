@@ -580,7 +580,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
   it should "tx" in {
 
-      val source = Source.single(ByteString(
+    val source = Source.single(ByteString(
       """
         <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
             <EnvelopeVersion>2.0</EnvelopeVersion>
@@ -589,15 +589,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
                     <Class>HMRC-CT-CT600</Class>
                     <Qualifier>request</Qualifier>
                     <Function>submit</Function>
-                    
-                    
                     <CorrelationID></CorrelationID>
-                    
-                    
                     <Transformation>XML</Transformation>
-                    
-                    
-                    
                 </MessageDetails>
                 <SenderDetails>
                     <IDAuthentication>
@@ -608,31 +601,12 @@ class XMLParserXmlExtractSpec extends FlatSpec
                             <Value>pass</Value>
                         </Authentication>
                     </IDAuthentication>
-                   
                 </SenderDetails>
             </Header>
-            <GovTalkDetails>
-               <Keys>
-                    <Key Type="UTR">1234567890</Key>
-                    
-                    
-            </Keys>
-                <ChannelRouting>
-                    <Channel>
-                        <URI>1352</URI>
-                        <Product>ASPIRE HMRC-VAT100-DEC</Product>
-                        <Version>1.0</Version>
-                    </Channel>
-                </ChannelRouting>
-        
-               
-        
-            </GovTalkDetails>
-            
         </GovTalkMessage>
-        """.stripMargin))
+      """.stripMargin))
     val paths = Set[XMLInstruction](
-//      XMLUpdate(Seq("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"),Some("123456"), isUpsert = true),
+      XMLUpdate(Seq("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"), Some("123456"), isUpsert = true),
       XMLUpdate(Seq("GovTalkMessage", "Header", "MessageDetails", "GatewayTimestamp"),
         Some("2015-02-01"), isUpsert = true),
       XMLUpdate(Seq("GovTalkMessage", "Header", "SenderDetails", "IDAuthentication", "SenderID"), Some("0000000"), isUpsert = true),
@@ -640,6 +614,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     )
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       println(r.utf8String)
+      r.utf8String
     }
   }
 

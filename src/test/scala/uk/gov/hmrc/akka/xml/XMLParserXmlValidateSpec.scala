@@ -85,8 +85,9 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body></xml>"
     }
-
   }
+
+
   it should "fail validation when the specified data does not pass the supplied validation function" in {
     val source = Source.single(ByteString("<xml><body><foo>fail</foo><bar>fail</bar></body></xml>"))
     val error = new NoStackTrace {}
