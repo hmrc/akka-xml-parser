@@ -68,6 +68,54 @@ trait XMLParserFixtures {
         a ++ b
       })
 
+    val GOV_TALK_MESSAGE = "GovTalkMessage"
+    val ENVELOPE_VERSION = "EnvelopeVersion"
+    val HEADER = "Header"
+    val MESSAGE_CLASS = "Class"
+    val QUALIFIER = "Qualifier"
+    val FUNCTION = "Function"
+    val TRANSACTION_ID = "TransactionID"
+    val CORRELATION_ID = "CorrelationID"
+    val RESPONSE_ENDPOINT = "ResponseEndPoint"
+    val POLL_INTERVAL = "PollInterval"
+    val TRANSFORMATION = "Transformation"
+    val GATEWAY_TEST = "GatewayTest"
+    val GATEWAY_TIMESTAMP = "GatewayTimestamp"
+    val SENDER_ID = "SenderID"
+    val METHOD = "Method"
+    val PASSWORD = "Value"
+    val INCLUDE_IDENTIFIERS = "IncludeIdentifiers"
+    val START_DATE = "StartDate"
+    val START_TIME = "StartTime"
+    val END_DATE = "EndDate"
+    val END_TIME = "EndTime"
+    val GEN_CORR_ID = "GenCorrID"
+    val GEN_TIMESTAMP = "GenTimestamp"
+
+    val MESSAGE_DETAILS = "MessageDetails"
+    val GOV_TALK_DETAILS = "GovTalkDetails"
+
+    val GOV_TALK_ERRORS = "GovTalkErrors"
+    val ERROR = "Error"
+    val RAISED_BY = "RaisedBy"
+    val ERROR_RESPONSE_DEPARTMENT = "Department"
+    val ERROR_RESPONSE_TEXT = "The submission of this document has failed due to departmental specific business logic in the Body tag."
+    val TEXT = "Text"
+
+    val SENDER_DETAILS = "SenderDetails"
+    val ID_AUTHENTICATION = "IDAuthentication"
+    val AUTHENTICATION = "Authentication"
+
+    val KEYS = "Keys"
+    val KEY = "Key"
+    val BODY = "Body"
+    val STATUS_REQUEST=  "StatusRequest"
+
+    val CHANNEL_ROUTING: String = "ChannelRouting"
+    val CHANNEL: String = "Channel"
+    val CHANNEL_URI: String = "URI"
+    val PRODUCT: String = "Product"
+    val PRODUCT_VERSION: String = "Version"
   }
 
 }

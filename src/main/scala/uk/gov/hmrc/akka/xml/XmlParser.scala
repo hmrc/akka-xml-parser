@@ -63,6 +63,7 @@ object AkkaXMLParser {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
+            println("chunk----" + new String(chunk))
             totalReceivedLength += chunk.length
             byteBuffer ++= incompleteBytes
             incompleteBytes.clear()
@@ -73,6 +74,7 @@ object AkkaXMLParser {
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
             if (!parser.hasNext) {
+              println("on-upstreamFinish")
               byteBuffer.clear()
               if (incompleteBytes.length > 0) {
                 byteBuffer ++= incompleteBytes
@@ -91,6 +93,7 @@ object AkkaXMLParser {
 
         setHandler(out, new OutHandler {
           override def onPull(): Unit = {
+            println("on-pppppppppuuulllll")
             if (!isClosed(in)) {
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               advanceParser()
@@ -176,8 +179,11 @@ object AkkaXMLParser {
                     completedInstructions += e
                   }
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) => {
-                    val newBytes = (byteBuffer.toArray ++ chunk).slice(start  - (totalReceivedLength - chunk.length) + incompleteBytesLength,
+                    //println("byteBuffer.toArray ++ chunk -----" + new String(byteBuffer.toArray ++ chunk))
+                    val newBytes = (byteBuffer.toArray ++ chunk).slice(start -
+                      (totalReceivedLength - chunk.length) + incompleteBytesLength,
                       end - (totalReceivedLength - chunk.length) + incompleteBytesLength)
+                    //println("newbytes-----" + new String(newBytes))
                     if (!isEmptyElement) {
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++ newBytes)
@@ -205,8 +211,9 @@ object AkkaXMLParser {
                       byteBuffer ++= newBytes
                       completedInstructions += e
                     }
+
                     case e: XMLValidate if e.start == node.slice(0, e.start.length) => {
-                      val newBytes = (byteBuffer.toArray ++ chunk).slice(start  - (totalReceivedLength - chunk.length) + incompleteBytesLength,
+                      val newBytes = (byteBuffer.toArray ++ chunk).slice(start - (totalReceivedLength - chunk.length) + incompleteBytesLength,
                         end - (totalReceivedLength - chunk.length) + incompleteBytesLength)
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++= newBytes)
@@ -214,11 +221,14 @@ object AkkaXMLParser {
                       }
                       validators += (ele)
 
-                      validators.foreach(t => t match {
-                        case (s@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map(throw _)
-                          completedInstructions += e
-                        case x => {
+                      validators.foreach(t => {
+                        t match {
+                          case (s@XMLValidate(_, `node`, f), testData) =>
+                            println("-------" + new String(testData.toArray))
+                            f(new String(testData.toArray)).map(throw _)
+                            completedInstructions += e
+                          case x => {
+                          }
                         }
                       })
                     }
@@ -244,7 +254,7 @@ object AkkaXMLParser {
                       chunk = getTailBytes(chunk, end - start)
                     }
                     case e: XMLValidate if e.start == node.slice(0, e.start.length) => {
-                      val newBytes = (byteBuffer.toArray ++ chunk).slice(start  - (totalReceivedLength - chunk.length) + incompleteBytesLength,
+                      val newBytes = (byteBuffer.toArray ++ chunk).slice(start - (totalReceivedLength - chunk.length) + incompleteBytesLength,
                         end - (totalReceivedLength - chunk.length) + incompleteBytesLength)
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++ newBytes)
