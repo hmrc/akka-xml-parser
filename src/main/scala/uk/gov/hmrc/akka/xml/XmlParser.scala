@@ -55,7 +55,6 @@ object AkkaXMLParser {
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new GraphStageLogic(shape) {
 
-
         import javax.xml.stream.XMLStreamConstants
 
         private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
@@ -63,7 +62,6 @@ object AkkaXMLParser {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
-            println("chunk----" + new String(chunk))
             totalReceivedLength += chunk.length
             byteBuffer ++= incompleteBytes
             incompleteBytes.clear()
@@ -73,50 +71,35 @@ object AkkaXMLParser {
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
-            if (!parser.hasNext) {
-              println("on-upstreamFinish")
-              byteBuffer.clear()
-              if (incompleteBytes.length > 0) {
-                byteBuffer ++= incompleteBytes
-                incompleteBytes.clear()
+            if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
+              if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
+                != instructions.count(x => x.isInstanceOf[XMLValidate])) {
+                throw new XMLValidationException
               }
-              if (node.length > 0)
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              completeStage()
-            }
-            else if (isAvailable(out)) {
-              advanceParser()
-            }
+            if (node.length > 0)
+              xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+            if (byteBuffer.toArray.length > 0)
+              emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+            completeStage()
           }
         })
 
         setHandler(out, new OutHandler {
           override def onPull(): Unit = {
-            println("on-pppppppppuuulllll")
             if (!isClosed(in)) {
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              advanceParser()
               byteBuffer.clear()
               if (incompleteBytes.length > 0) {
                 byteBuffer ++= incompleteBytes
                 incompleteBytes.clear()
+              }
+              if (!hasBeenPulled(in)) {
+                pull(in)
               }
             }
             else {
-              if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
-                if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
-                  != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-                  throw new XMLValidationException
-                }
-              if (node.length > 0)
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               byteBuffer.clear()
-              if (incompleteBytes.length > 0) {
-                byteBuffer ++= incompleteBytes
-                incompleteBytes.clear()
-              }
               completeStage()
             }
           }
@@ -148,16 +131,11 @@ object AkkaXMLParser {
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
                 if (!isClosed(in)) {
-                  if (!hasBeenPulled(in)) {
-                    //TODO : Refactor this code
-                    if (chunk.length > 0) {
-                      val lastCompleteElementInChunk = chunk.slice(0, (start - ((totalReceivedLength - chunk.length))))
-                      incompleteBytes ++= chunk.slice(lastCompleteElementInChunk.length, chunk.length)
-                      byteBuffer ++= lastCompleteElementInChunk
-                      incompleteBytesLength = incompleteBytes.length
-                    }
-                    pull(in)
-                  }
+                  val lastCompleteElementInChunk = chunk.slice(0,
+                    (start - ((totalReceivedLength - chunk.length))))
+                  incompleteBytes ++= chunk.slice(lastCompleteElementInChunk.length, chunk.length)
+                  byteBuffer ++= lastCompleteElementInChunk
+                  incompleteBytesLength = incompleteBytes.length
                 }
                 else failStage(new IllegalStateException("Stream finished before event was fully parsed."))
 
@@ -179,11 +157,9 @@ object AkkaXMLParser {
                     completedInstructions += e
                   }
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) => {
-                    //println("byteBuffer.toArray ++ chunk -----" + new String(byteBuffer.toArray ++ chunk))
                     val newBytes = (byteBuffer.toArray ++ chunk).slice(start -
                       (totalReceivedLength - chunk.length) + incompleteBytesLength,
                       end - (totalReceivedLength - chunk.length) + incompleteBytesLength)
-                    //println("newbytes-----" + new String(newBytes))
                     if (!isEmptyElement) {
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++ newBytes)
@@ -220,11 +196,9 @@ object AkkaXMLParser {
                         case None => throw new XMLValidationException
                       }
                       validators += (ele)
-
                       validators.foreach(t => {
                         t match {
                           case (s@XMLValidate(_, `node`, f), testData) =>
-                            println("-------" + new String(testData.toArray))
                             f(new String(testData.toArray)).map(throw _)
                             completedInstructions += e
                           case x => {
@@ -265,17 +239,12 @@ object AkkaXMLParser {
                     case _ => {
                     }
                   }
-
                 })
-                //pointer = end
                 if (parser.hasNext) advanceParser()
 
               case XML_ERROR =>
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-                byteBuffer ++= chunk
-                if (isAvailable(out)) {
-                  push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-                }
+
               case x =>
                 if (parser.hasNext) advanceParser()
             }
