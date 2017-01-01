@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,14 +63,20 @@ object AkkaXMLParser {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
             totalReceivedLength += chunk.length
-            byteBuffer ++= incompleteBytes
-            incompleteBytes.clear()
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
             advanceParser()
+            push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+            byteBuffer.clear()
+            if (incompleteBytes.length > 0) {
+              byteBuffer ++= incompleteBytes
+              incompleteBytes.clear()
+            }
           }
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
+            advanceParser()
+
             if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
               if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
                 != instructions.count(x => x.isInstanceOf[XMLValidate])) {
@@ -78,30 +84,17 @@ object AkkaXMLParser {
               }
             if (node.length > 0)
               xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-            if (byteBuffer.toArray.length > 0)
+
+            if (byteBuffer.toArray.length > 0) {
               emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+            }
             completeStage()
           }
         })
 
         setHandler(out, new OutHandler {
           override def onPull(): Unit = {
-            if (!isClosed(in)) {
-              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              byteBuffer.clear()
-              if (incompleteBytes.length > 0) {
-                byteBuffer ++= incompleteBytes
-                incompleteBytes.clear()
-              }
-              if (!hasBeenPulled(in)) {
-                pull(in)
-              }
-            }
-            else {
-              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-              byteBuffer.clear()
-              completeStage()
-            }
+            pull(in)
           }
         })
 
@@ -130,14 +123,14 @@ object AkkaXMLParser {
 
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                if (!isClosed(in)) {
+                if (chunk.length > 0) {
                   val lastCompleteElementInChunk = chunk.slice(0,
                     (start - ((totalReceivedLength - chunk.length))))
                   incompleteBytes ++= chunk.slice(lastCompleteElementInChunk.length, chunk.length)
                   byteBuffer ++= lastCompleteElementInChunk
                   incompleteBytesLength = incompleteBytes.length
                 }
-                else failStage(new IllegalStateException("Stream finished before event was fully parsed."))
+              //else failStage(new IllegalStateException("Stream finished before event was fully parsed."))
 
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
