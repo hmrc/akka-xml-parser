@@ -53,8 +53,6 @@ trait XMLParserFixtures {
     def flowByteString = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
 
     def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => {
-//      println("response bytestring ------------------------ : " + x._1.utf8String)
-//      println("response element >>>>>>>>>>>> : " + x._2)
       x._1
     })
 

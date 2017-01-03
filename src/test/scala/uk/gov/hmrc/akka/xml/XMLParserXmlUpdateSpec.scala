@@ -276,45 +276,4 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe expected
     }
   }
-
-
-  it should "update and insert multiple elements" in {
-
-    val source = Source.single(ByteString(
-      """
-        <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
-            <EnvelopeVersion>2.0</EnvelopeVersion>
-            <Header>
-                <MessageDetails>
-                    <Class>HMRC-CT-CT600</Class>
-                    <Qualifier>request</Qualifier>
-                    <Function>submit</Function>
-                    <CorrelationID></CorrelationID>
-                    <Transformation>XML</Transformation>
-                </MessageDetails>
-                <SenderDetails>
-                    <IDAuthentication>
-                        <SenderID>user1</SenderID>
-                        <Authentication>
-                            <Method>clear</Method>
-                            <Role>Authenticate/Validate</Role>
-                            <Value>pass</Value>
-                        </Authentication>
-                    </IDAuthentication>
-                </SenderDetails>
-            </Header>
-        </GovTalkMessage>
-      """.stripMargin))
-    val paths = Set[XMLInstruction](
-      XMLUpdate(Seq("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"), Some("123456"), isUpsert = true),
-      XMLUpdate(Seq("GovTalkMessage", "Header", "MessageDetails", "GatewayTimestamp"),
-        Some("2015-02-01"), isUpsert = true),
-      XMLUpdate(Seq("GovTalkMessage", "Header", "SenderDetails", "IDAuthentication", "SenderID"), Some("0000000"), isUpsert = true),
-      XMLUpdate(Seq("GovTalkMessage", "Header", "SenderDetails", "IDAuthentication", "Authentication", "Value"), Some("zzzzzz"), isUpsert = true)
-    )
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
-      println(r.utf8String)
-      r.utf8String
-    }
-  }
 }
