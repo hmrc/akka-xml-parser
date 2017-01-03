@@ -63,19 +63,28 @@ object AkkaXMLParser {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
             totalReceivedLength += chunk.length
-            parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
-            advanceParser()
-            push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-            byteBuffer.clear()
-            if (incompleteBytes.length > 0) {
-              byteBuffer ++= incompleteBytes
+
+            if (stopParsing) {
+              push(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+              byteBuffer.clear()
               incompleteBytes.clear()
+            } else {
+              parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+              advanceParser()
+              push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              byteBuffer.clear()
+              if (incompleteBytes.length > 0) {
+                byteBuffer ++= incompleteBytes
+                incompleteBytes.clear()
+              }
             }
           }
 
           override def onUpstreamFinish(): Unit = {
-            parser.getInputFeeder.endOfInput()
-            advanceParser()
+            if (!stopParsing) {
+              parser.getInputFeeder.endOfInput()
+              advanceParser()
+            }
 
             if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
               if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
@@ -85,7 +94,11 @@ object AkkaXMLParser {
             if (node.length > 0)
               xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
 
-            if (byteBuffer.toArray.length > 0) {
+            if (stopParsing) {
+              emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+              byteBuffer.clear()
+              incompleteBytes.clear()
+            } else if (byteBuffer.toArray.length > 0) {
               emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
             }
             completeStage()
@@ -101,7 +114,7 @@ object AkkaXMLParser {
         var chunk = Array[Byte]()
         var totalReceivedLength = 0
         var incompleteBytesLength = 0
-
+        var stopParsing = false
         val node = ArrayBuffer[String]()
         val byteBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
@@ -237,6 +250,8 @@ object AkkaXMLParser {
 
               case XML_ERROR =>
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                stopParsing = true
+              //if (parser.hasNext) advanceParser()
 
               case x =>
                 if (parser.hasNext) advanceParser()
