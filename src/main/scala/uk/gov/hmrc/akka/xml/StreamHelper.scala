@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,5 +73,25 @@ trait StreamHelper {
     )
     collection
   }.toMap
+
+
+  def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String], isEmptyElement: Boolean)(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
+    val prefix = getPrefix
+
+    val startElement = attributes.foldLeft(s"<$prefix${xPath.last}") {
+      case (s, (k, v)) => s"""$s $k="$v""""
+    } + ">"
+    val value = elemText.getOrElse("")
+    val endElement = getEndElement(xPath, prefix)
+    if (isEmptyElement) s"$startElement$value$endElement"
+    else s"$startElement$value"
+  }
+
+  private def getPrefix(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = Option(reader.getPrefix) match {
+    case Some(pre) if pre.nonEmpty => s"$pre:"
+    case _ => ""
+  }
+
+  private def getEndElement(xPath: Seq[String], prefix: String) = s"</$prefix${xPath.last}>"
 
 }

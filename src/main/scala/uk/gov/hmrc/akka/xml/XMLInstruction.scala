@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 HM Revenue & Customs
+ * Copyright 2017 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ sealed trait XMLInstruction
 
 case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.empty) extends XMLInstruction
 
-case class XMLUpdate(xPath: Seq[String], value: String, isUpsert: Boolean = false) extends XMLInstruction
+case class XMLUpdate(xPath: Seq[String], value: Option[String] = None, attributes: Map[String, String] = Map.empty, isUpsert: Boolean = false) extends XMLInstruction
 
 case class XMLValidate(start: Seq[String], end: Seq[String], f: String => Option[Throwable]) extends XMLInstruction
 
-case class XMLDelete(xPath: Seq[String]) extends XMLInstruction
+//case class XMLDelete(xPath: Seq[String]) extends XMLInstruction

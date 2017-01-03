@@ -17,6 +17,19 @@
 package uk.gov.hmrc.akka.xml
 
 /**
-  * Created by abhishek on 02/12/16.
+  * Created by abhishek on 12/12/16.
   */
-case class XMLElement(xPath: Seq[String], attributes: Map[String, String] = Map.empty, value: Option[String] = None)
+trait ParsingDataFunctions {
+
+  def getTailBytes(bytes: Array[Byte], from: Int) = {
+    bytes.slice(from, bytes.length)
+  }
+
+  def insertBytes(chunk: Array[Byte], at: Int, insert: Array[Byte]): Array[Byte] = {
+    chunk.slice(0, at) ++ insert
+  }
+
+  def getHeadAndTail(chunks: Array[Byte], at: Int, till: Int, insert: Array[Byte], offset: Int) = {
+    (chunks.slice(0, at) ++ insert.slice(offset, insert.length), chunks.slice(till, chunks.length))
+  }
+}
