@@ -131,64 +131,65 @@ class XMLParserXmlExtractSpec extends FlatSpec
   }
 
 
-//  it should "handle a malformed xml with no available metadata" in {
-//    val source = Source.single(ByteString("malformed"))
-//
-//    whenReady(source.runWith(parseToXMLElements(Set.empty))) { r =>
-//      r shouldBe Set(XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
-//    }
-//
-//    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
-//      r.utf8String shouldBe "malformed"
-//    }
-//  }
+  it should "handle a malformed xml with no available metadata" in {
+    val source = Source.single(ByteString("malformed"))
 
-//  it should "return any already extracted metadata on a malformed xml" in {
-//    val source = Source.single(ByteString("<xml><header><id>12345</id></xml>"))
-//    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
-//
-////    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-////      r shouldBe Set(
-////        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-////        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
-////    }
-//
-//    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
-//    }
-//  }
+    whenReady(source.runWith(parseToXMLElements(Set.empty))) { r =>
+      r shouldBe Set(XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
+    }
+
+    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
+      r.utf8String shouldBe "malformed"
+    }
+  }
+
+  it should "return any already extracted metadata on a malformed xml and original xml should still be returned" in {
+    val source = Source.single(ByteString("<xml><header><id>12345</id></xml>"))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
+    }
+
+    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+    }
+  }
 
 
-//  it should "extract available metadata if the xml is malformed after the first chunk" in {
-//    val source = Source(List(ByteString("<xml><header><id>12345</id>"), ByteString("</xml>")))
-//    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
-//
+  it should "extract available metadata if the xml is malformed after the first chunk" in {
+    val source = Source(List(ByteString("<xml><header><id>12345</id>"), ByteString("</xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+    }
+  }
+
+  it should "return a malformed status if an error occurs in the middle of a chunk, leaving unprocessed bytes" in {
+    val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
+    val paths = Set.empty[XMLInstruction]
+
 //    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
 //      r shouldBe Set(
-//        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
 //        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
 //      )
 //    }
-//
-//    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
-//    }
-//  }
 
-//  it should "return a malformed status if an error occurs in the middle of a chunk, leaving unprocessed bytes" in {
-//    val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
-//    val paths = Set.empty[XMLInstruction]
-//
-//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-//      r shouldBe Set(
-//        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-//      )
-//    }
-//
-//    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/>"
-//    }
-//  }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      println(r.utf8String)
+      r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/></header>"
+    }
+  }
 
   it should "extract attributes where the xPath is given" in {
     val source = Source.single(ByteString("<xml><body><element Attribute=\"Test\">elementText</element></body></xml>"))

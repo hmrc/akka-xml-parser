@@ -59,6 +59,7 @@ object AkkaXMLParser {
 
         private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
         private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
+
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
@@ -71,6 +72,8 @@ object AkkaXMLParser {
             } else {
               parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
               advanceParser()
+
+
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               byteBuffer.clear()
               if (incompleteBytes.length > 0) {
@@ -91,6 +94,7 @@ object AkkaXMLParser {
                 != instructions.count(x => x.isInstanceOf[XMLValidate])) {
                 throw new XMLValidationException
               }
+
             if (node.length > 0)
               xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
 
@@ -143,7 +147,6 @@ object AkkaXMLParser {
                   byteBuffer ++= lastCompleteElementInChunk
                   incompleteBytesLength = incompleteBytes.length
                 }
-              //else failStage(new IllegalStateException("Stream finished before event was fully parsed."))
 
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
@@ -205,7 +208,12 @@ object AkkaXMLParser {
                       validators.foreach(t => {
                         t match {
                           case (s@XMLValidate(_, `node`, f), testData) =>
-                            f(new String(testData.toArray)).map(throw _)
+                            f(new String(testData.toArray)).map(
+                              x => {
+                                println("data-------" + new String(testData.toArray))
+                                throw x
+                              }
+                            )
                             completedInstructions += e
                           case x => {
                           }
@@ -251,7 +259,6 @@ object AkkaXMLParser {
               case XML_ERROR =>
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
                 stopParsing = true
-              //if (parser.hasNext) advanceParser()
 
               case x =>
                 if (parser.hasNext) advanceParser()
