@@ -179,15 +179,15 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source(List(ByteString("<header>brokenID</brokenTag><moreBytes/>"), ByteString("</header>")))
     val paths = Set.empty[XMLInstruction]
 
-//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-//      r shouldBe Set(
-//        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-//      )
-//    }
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+      )
+    }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       println(r.utf8String)
-      r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/></header>"
+      r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/>"
     }
   }
 

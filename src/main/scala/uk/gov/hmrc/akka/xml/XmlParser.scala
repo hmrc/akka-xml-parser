@@ -22,7 +22,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
 import com.fasterxml.aalto.stax.InputFactoryImpl
-import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader}
+import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -64,47 +64,54 @@ object AkkaXMLParser {
           override def onPush(): Unit = {
             chunk = grab(in).toArray
             totalReceivedLength += chunk.length
-
-            if (stopParsing) {
-              push(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
-              byteBuffer.clear()
-              incompleteBytes.clear()
-            } else {
-              parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+            parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+            try {
               advanceParser()
-
-
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               byteBuffer.clear()
               if (incompleteBytes.length > 0) {
                 byteBuffer ++= incompleteBytes
                 incompleteBytes.clear()
               }
+              chunk = Array.empty[Byte]
+            }
+            catch {
+              case e: WFCException => {
+                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                completeStage()
+              }
+              case e => throw e
             }
           }
 
           override def onUpstreamFinish(): Unit = {
-            if (!stopParsing) {
-              parser.getInputFeeder.endOfInput()
+            parser.getInputFeeder.endOfInput()
+            try {
               advanceParser()
-            }
+              if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
+                if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
+                  != instructions.count(x => x.isInstanceOf[XMLValidate])) {
+                  throw new XMLValidationException
+                }
 
-            if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
-              if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
-                != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-                throw new XMLValidationException
+              if (node.length > 0)
+                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+
+              if (byteBuffer.toArray.length > 0) {
+                emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               }
-
-            if (node.length > 0)
-              xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-
-            if (stopParsing) {
-              emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
-              byteBuffer.clear()
-              incompleteBytes.clear()
-            } else if (byteBuffer.toArray.length > 0) {
-              emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+              else{
+                emit(out, (ByteString(Array.empty[Byte]), getCompletedXMLElements(xmlElements).toSet))
+              }
             }
+            catch {
+              case e: WFCException => {
+                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+              }
+            }
+
             completeStage()
           }
         })
@@ -118,7 +125,6 @@ object AkkaXMLParser {
         var chunk = Array[Byte]()
         var totalReceivedLength = 0
         var incompleteBytesLength = 0
-        var stopParsing = false
         val node = ArrayBuffer[String]()
         val byteBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
@@ -131,10 +137,7 @@ object AkkaXMLParser {
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
-            val event = Try(parser.next())
-              .getOrElse {
-                XML_ERROR
-              }
+            val event = parser.next()
             val (start, end) = getBounds(parser)
             val isEmptyElement = parser.isEmptyElement
 
@@ -210,7 +213,6 @@ object AkkaXMLParser {
                           case (s@XMLValidate(_, `node`, f), testData) =>
                             f(new String(testData.toArray)).map(
                               x => {
-                                println("data-------" + new String(testData.toArray))
                                 throw x
                               }
                             )
@@ -256,16 +258,15 @@ object AkkaXMLParser {
                 })
                 if (parser.hasNext) advanceParser()
 
-              case XML_ERROR =>
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
-                stopParsing = true
-
               case x =>
                 if (parser.hasNext) advanceParser()
             }
           }
+
         }
+
       }
+
 
     private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
       val start = reader.getLocationInfo.getStartingByteOffset.toInt
