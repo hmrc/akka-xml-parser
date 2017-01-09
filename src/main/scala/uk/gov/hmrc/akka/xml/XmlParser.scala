@@ -78,6 +78,12 @@ object AkkaXMLParser {
             catch {
               case e: WFCException => {
                 xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
+                  if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
+                    != instructions.count(x => x.isInstanceOf[XMLValidate])) {
+                    throw new XMLValidationException
+                  }
+
                 emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
                 completeStage()
               }
@@ -89,6 +95,7 @@ object AkkaXMLParser {
             parser.getInputFeeder.endOfInput()
             try {
               advanceParser()
+
               if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
                 if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
                   != instructions.count(x => x.isInstanceOf[XMLValidate])) {
