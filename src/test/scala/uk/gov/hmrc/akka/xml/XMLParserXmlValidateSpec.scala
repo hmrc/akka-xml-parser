@@ -155,32 +155,32 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-//  it should "return a malformed status if the xml isn't properly closed off with an end tag" in {
-//    val source = Source.single(ByteString("<foo>bar"))
-//    val paths = Set[XMLInstruction](XMLExtract(XPath("foo")))
-//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-//      r shouldBe Set(
-//        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-//      )
-//    }
-//    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<foo>bar"
-//    }
-//  }
+  it should "return a malformed status if the xml isn't properly closed off with an end tag" in {
+    val source = Source.single(ByteString("<foo>bar"))
+    val paths = Set[XMLInstruction](XMLExtract(XPath("foo")))
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<foo>bar"
+    }
+  }
 
-//  it should "return a malformed status if the xml isn't properly closed off with an end tag (multiple chunks)" in {
-//    val source = Source(List(ByteString("<xml><foo>b"), ByteString("ar"), ByteString("</foo><hello>wor"), ByteString("ld</hello>")))
-//
-//    val paths = Set[XMLInstruction](XMLExtract(XPath("xml/foo")))
-//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-//      r shouldBe Set(
-//        XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
-//        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-//      )
-//    }
-//    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
-//    }
-//  }
+  it should "return a malformed status if the xml isn't properly closed off with an end tag (multiple chunks)" in {
+    val source = Source(List(ByteString("<xml><foo>b"), ByteString("ar"), ByteString("</foo><hello>wor"), ByteString("ld</hello>")))
+
+    val paths = Set[XMLInstruction](XMLExtract(XPath("xml/foo")))
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
+        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
+    }
+  }
 
 }
