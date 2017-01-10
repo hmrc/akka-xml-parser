@@ -156,15 +156,16 @@ class XMLParserXmlValidateSpec extends FlatSpec
   }
 
   it should "return a malformed status if the xml isn't properly closed off with an end tag" in {
-    val source = Source.single(ByteString("<foo>bar"))
+    val source = Source.single(ByteString("<foo>foo<bar>bar"))
     val paths = Set[XMLInstruction](XMLExtract(XPath("foo")))
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+        XMLElement(Nil, Map(AkkaXMLParser.MALFORMED_STATUS ->
+          (AkkaXMLParser.XML_START_END_TAGS_MISMATCH + "foo, bar")), Some(AkkaXMLParser.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<foo>bar"
+      r.utf8String shouldBe "<foo>foo<bar>bar"
     }
   }
 
@@ -175,7 +176,8 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
-        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
+        XMLElement(Nil, Map(AkkaXMLParser.MALFORMED_STATUS ->
+          (AkkaXMLParser.XML_START_END_TAGS_MISMATCH + "xml")), Some(AkkaXMLParser.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>

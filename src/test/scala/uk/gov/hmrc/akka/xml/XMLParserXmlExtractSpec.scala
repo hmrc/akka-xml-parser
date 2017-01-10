@@ -135,7 +135,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("malformed"))
 
     whenReady(source.runWith(parseToXMLElements(Set.empty))) { r =>
-      r shouldBe Set(XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
+      r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
+
     }
 
     whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
@@ -148,9 +149,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(
-        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS)))
+      r.head shouldBe XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
+      r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
@@ -164,11 +164,10 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(
-        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-      )
+      r.head shouldBe XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
+      r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
+
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
@@ -180,13 +179,10 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Set.empty[XMLInstruction]
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(
-        XMLElement(Nil, Map.empty, Some(AkkaXMLParser.MALFORMED_STATUS))
-      )
+      r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      println(r.utf8String)
       r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/>"
     }
   }
