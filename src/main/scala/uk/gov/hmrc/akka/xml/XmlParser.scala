@@ -35,6 +35,7 @@ import scala.util.Try
 object AkkaXMLParser {
   val XML_ERROR = 258
   val MALFORMED_STATUS = "Malformed"
+  val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
   /**
     * Parser Flow that takes a stream of ByteStrings and parses them to (ByteString, Set[XMLElement]).
@@ -77,12 +78,13 @@ object AkkaXMLParser {
             }
             catch {
               case e: WFCException => {
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
                 if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
                   if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
                     != instructions.count(x => x.isInstanceOf[XMLValidate])) {
                     throw new XMLValidationException
                   }
+
 
                 emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
                 completeStage()
@@ -103,18 +105,19 @@ object AkkaXMLParser {
                 }
 
               if (node.length > 0)
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
+                  (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
 
               if (byteBuffer.toArray.length > 0) {
                 emit(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               }
-              else{
+              else {
                 emit(out, (ByteString(Array.empty[Byte]), getCompletedXMLElements(xmlElements).toSet))
               }
             }
             catch {
               case e: WFCException => {
-                xmlElements.add(XMLElement(Nil, Map.empty, Some(MALFORMED_STATUS)))
+                xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
                 emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
               }
             }
@@ -194,9 +197,11 @@ object AkkaXMLParser {
 
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
+
                 instructions.filter(x => !completedInstructions.contains(x)).foreach(f = (e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _) => {
+
                       update(xmlElements, node, Some(bufferedText.toString()))
                     }
                     case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert => {
