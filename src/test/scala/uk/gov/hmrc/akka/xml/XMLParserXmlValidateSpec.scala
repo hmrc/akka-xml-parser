@@ -114,12 +114,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
   it should "fail validation over multiple chunks" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>foo</fo"), ByteString("o><bar>test</bar></body></xml>")))
-    val error = new NoStackTrace {}
+    val error = new ParserValidationError {}
     val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(error)
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
-    whenReady(source.runWith(parseToXMLElements(paths)).failed) { r =>
-      r shouldBe error
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r.last.attributes(AkkaXMLParser.VALIDATION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
     }
   }
 

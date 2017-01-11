@@ -16,7 +16,11 @@
 
 package uk.gov.hmrc.akka.xml
 
+import scala.util.control.NoStackTrace
+
 /**
   * Created by abhishek on 19/12/16.
   */
 class XMLValidationException extends Exception("XML validation was not completed.")
+
+trait ParserValidationError extends NoStackTrace
