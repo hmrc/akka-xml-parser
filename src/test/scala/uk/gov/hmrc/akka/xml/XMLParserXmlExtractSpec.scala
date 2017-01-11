@@ -136,7 +136,6 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(Set.empty))) { r =>
       r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
-
     }
 
     whenReady(source.runWith(parseToByteString(Set.empty))) { r =>

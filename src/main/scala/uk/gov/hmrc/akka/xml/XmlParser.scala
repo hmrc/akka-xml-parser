@@ -28,6 +28,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
+import scala.util.control.NoStackTrace
 
 /**
   * Created by abhishek on 1/12/16.
@@ -35,6 +36,7 @@ import scala.util.Try
 object AkkaXMLParser {
   val XML_ERROR = 258
   val MALFORMED_STATUS = "Malformed"
+  val VALIDATION_FAILURE = "Validation failure"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
   /**
@@ -63,10 +65,10 @@ object AkkaXMLParser {
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
-            chunk = grab(in).toArray
-            totalReceivedLength += chunk.length
-            parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
             try {
+              chunk = grab(in).toArray
+              totalReceivedLength += chunk.length
+              parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
               advanceParser()
               push(out, (ByteString(byteBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               byteBuffer.clear()
@@ -79,17 +81,17 @@ object AkkaXMLParser {
             catch {
               case e: WFCException => {
                 xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-                if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
-                  if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
-                    != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-                    throw new XMLValidationException
-                  }
-
-
                 emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
                 completeStage()
               }
-              case e => throw e
+              case e: ParserValidationError => {
+                xmlElements.add(XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)))
+                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                completeStage()
+              }
+              case e => {
+                throw e
+              }
             }
           }
 
@@ -119,6 +121,13 @@ object AkkaXMLParser {
               case e: WFCException => {
                 xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
                 emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+              }
+              case e: ParserValidationError => {
+                xmlElements.add(XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)))
+                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+              }
+              case e => {
+                throw e
               }
             }
 
@@ -278,7 +287,6 @@ object AkkaXMLParser {
         }
 
       }
-
 
     private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
       val start = reader.getLocationInfo.getStartingByteOffset.toInt
