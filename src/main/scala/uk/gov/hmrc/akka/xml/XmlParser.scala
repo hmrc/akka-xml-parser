@@ -67,7 +67,6 @@ object AkkaXMLParser {
           override def onPush(): Unit = {
             try {
               chunk = grab(in).toArray
-              byteBufferTemp ++= chunk
               totalReceivedLength += chunk.length
               parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
               advanceParser()
@@ -130,7 +129,6 @@ object AkkaXMLParser {
                 throw e
               }
             }
-            byteBufferTemp.clear()
             completeStage()
           }
         })
@@ -146,7 +144,6 @@ object AkkaXMLParser {
         var incompleteBytesLength = 0
         val node = ArrayBuffer[String]()
         val streamBuffer = ArrayBuffer[Byte]()
-        val byteBufferTemp = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
         val completedInstructions = mutable.Set[XMLInstruction]()
         val xmlElements = mutable.Set[XMLElement]()
