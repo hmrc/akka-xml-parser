@@ -104,10 +104,10 @@ class XMLParserXmlUpdateSpec
 
   it should "update an element where multiple elements are split over multiple chunks" in {
     val source = Source(List(ByteString("<xm"), ByteString("l><heade"),
-      ByteString("r><foo"), ByteString(">foo</fo"), ByteString("o></header"), ByteString("></xml>")))
+      ByteString("r><foo"), ByteString(">fo111o</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+    r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
 
