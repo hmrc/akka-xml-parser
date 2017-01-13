@@ -36,6 +36,7 @@ import scala.util.control.NoStackTrace
 object AkkaXMLParser {
   val XML_ERROR = 258
   val MALFORMED_STATUS = "Malformed"
+  val STREAM_SIZE = "Stream Size"
   val VALIDATION_FAILURE = "Validation failure"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
@@ -79,13 +80,19 @@ object AkkaXMLParser {
             }
             catch {
               case e: WFCException => {
-                xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                emitStage(
+                  XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)),
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(incompleteBytes.toArray ++ chunk))
+
                 completeStage()
               }
               case e: ParserValidationError => {
-                xmlElements.add(XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)))
-                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                emitStage(
+                  XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)),
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(incompleteBytes.toArray ++ chunk))
+
                 completeStage()
               }
               case e => {
@@ -110,20 +117,29 @@ object AkkaXMLParser {
                   (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
 
               if (streamBuffer.toArray.length > 0) {
+                emitStage(
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(incompleteBytes.toArray ++ chunk))
                 emit(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               }
               else {
-                emit(out, (ByteString(Array.empty[Byte]), getCompletedXMLElements(xmlElements).toSet))
+                emitStage(
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(Array.empty[Byte]))
               }
             }
             catch {
               case e: WFCException => {
-                xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                emitStage(
+                  XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)),
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(incompleteBytes.toArray ++ chunk))
               }
               case e: ParserValidationError => {
-                xmlElements.add(XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)))
-                emit(out, (ByteString(incompleteBytes.toArray ++ chunk), getCompletedXMLElements(xmlElements).toSet))
+                emitStage(
+                  XMLElement(Nil, Map(VALIDATION_FAILURE -> e.toString), Some(VALIDATION_FAILURE)),
+                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+                )(ByteString(incompleteBytes.toArray ++ chunk))
               }
               case e => {
                 throw e
@@ -152,6 +168,12 @@ object AkkaXMLParser {
         private var isCharacterBuffering = false
         private val bufferedText = new StringBuilder
 
+
+        private def emitStage(elementsToAdd: XMLElement*)(bytesToEmit: ByteString) = {
+          elementsToAdd.foreach(xmlElements.add(_))
+          emit(out, (bytesToEmit, getCompletedXMLElements(xmlElements).toSet))
+        }
+
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
             val event = parser.next()
@@ -165,7 +187,7 @@ object AkkaXMLParser {
                     (start - ((totalReceivedLength - chunk.length))))
                   incompleteBytes ++= chunk.slice(lastCompleteElementInChunk.length, chunk.length)
 
-                  if (lastCompleteElementInChunk.length == 0 && (end-start) > chunk.length) {
+                  if (lastCompleteElementInChunk.length == 0 && (end - start) > chunk.length) {
                     streamBuffer.clear()
                   } else {
                     streamBuffer ++= lastCompleteElementInChunk
