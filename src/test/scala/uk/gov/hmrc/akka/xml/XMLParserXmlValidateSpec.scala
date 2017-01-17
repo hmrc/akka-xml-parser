@@ -92,7 +92,8 @@ class XMLParserXmlValidateSpec extends FlatSpec
   it should "fail validation when the specified data does not pass the supplied validation function" in {
     val source = Source.single(ByteString("<xml><body><foo>fail</foo><bar>fail</bar></body></xml>"))
     val error = new ParserValidationError {}
-    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(error)
+    val validatingFunction: String => Option[Throwable] = (string: String) => if (string ==
+      "<body><foo>test</foo><bar>test</bar></body>") None else Some(error)
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -183,6 +184,16 @@ class XMLParserXmlValidateSpec extends FlatSpec
   }
 
 
+//  it should "fail validation if the start tag is not found but end tag is found" in {
+//    val source = Source.single(ByteString("<xml><body><bar>bar<foo>foo</foo></bar></body></xml>"))
+//    val validatingFunction = (string: String) => None
+//    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body", "foo"), Seq("xml", "body", "bar"), validatingFunction))
+//
+//    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+//      println(r)
+//      r shouldBe an[XMLValidationException]
+//    }
+//  }
 
   it should "fail validation if the end tag is not found" in {
     val source = Source.single(ByteString("<xml><body><foo>foo</foo></body></xml>"))
