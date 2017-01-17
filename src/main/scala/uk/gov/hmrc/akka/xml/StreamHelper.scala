@@ -28,7 +28,7 @@ trait StreamHelper {
   def update(xmlElementsLst: scala.collection.mutable.Set[XMLElement],
              path: ArrayBuffer[String], newValue: Some[String]): Unit = {
     val elementsWithoutAnyValueForGivenPath = xmlElementsLst.collect {
-      case e: XMLElement if (e.xPath == path.toList) && (e.value == None) => e
+      case e: XMLElement if (e.xPath == path.toList) && e.value.isEmpty => e
     }
 
     elementsWithoutAnyValueForGivenPath.map((ele: XMLElement) => {
@@ -36,17 +36,18 @@ trait StreamHelper {
       val newElement = ele.copy(value = newValue)
       xmlElementsLst.add(newElement)
     })
-
   }
 
   def getCompletedXMLElements(xmlElementsLst: scala.collection.mutable.Set[XMLElement]):
   scala.collection.mutable.Set[XMLElement] = {
     val completedElements = xmlElementsLst.collect {
-      case e: XMLElement if !(e.xPath.size > 0 && e.value == None) => e
+      case e if !(e.xPath.nonEmpty && e.value.isEmpty) => e
     }
-    completedElements.foreach(x => {
-      xmlElementsLst -= x
+
+    completedElements.foreach({
+      xmlElementsLst -= _
     })
+
     completedElements
   }
 
@@ -73,7 +74,6 @@ trait StreamHelper {
     )
     collection
   }.toMap
-
 
   def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String], isEmptyElement: Boolean)(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
     val prefix = getPrefix

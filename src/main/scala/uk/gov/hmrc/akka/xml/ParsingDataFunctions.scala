@@ -21,11 +21,7 @@ package uk.gov.hmrc.akka.xml
   */
 trait ParsingDataFunctions {
 
-  def getTailBytes(bytes: Array[Byte], from: Int) = {
-    bytes.slice(from, bytes.length)
-  }
-
-  def insertBytes(chunk: Array[Byte], at: Int, insert: Array[Byte]): Array[Byte] = {
+  def insertBytesInChunk(chunk: Array[Byte], at: Int, insert: Array[Byte]): Array[Byte] = {
     chunk.slice(0, at) ++ insert
   }
 

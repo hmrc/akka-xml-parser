@@ -91,6 +91,59 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "xml is unaltered if there is an unrelated instruction" in {
+    val source = Source(List(ByteString("<xml><header><id>"),
+      ByteString("</id></header><body/>"),
+      ByteString("</xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header><body/></xml>"
+    }
+  }
+
+  it should "xml is unaltered if there is no instruction and tags are split in chunks" in {
+    val source = Source(List(ByteString("<xml><header><i"),
+      ByteString("d>"),
+      ByteString("</id></header></xml>")))
+
+    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+    }
+  }
+
+  it should "xml is unaltered if there is no instruction and tags are not split in chunks" in {
+    val source = Source(List(ByteString("<xml><header><id>"),
+      ByteString("</id></header></xml>")))
+
+    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+    }
+  }
+
+
+  it should "xml is unaltered if there is an unrelated instruction and tags are not split in chunks" in {
+    val source = Source(List(ByteString("<xml><header><id>"),
+      ByteString("</id></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+    }
+  }
+
+  it should "xml is unaltered if there is an unrelated instruction and data in in one chunk" in {
+    val source = Source(List(ByteString("<xml><header><id></id></header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+    }
+  }
+
+
+
+
   it should "extract a single value when the bytes are split and element is whitespace" in {
     val source = Source(List(ByteString("<xml><header><i"),
       ByteString("d>  "),
@@ -182,8 +235,6 @@ class XMLParserXmlExtractSpec extends FlatSpec
       r.head shouldBe XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       r.last.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
-
-
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
     }
@@ -199,6 +250,19 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/>"
+    }
+  }
+
+  it should "return a malformed status if an error occurs in the last chunk, leaving unprocessed bytes" in {
+    val source = Source(List(ByteString("<header><moreBytes/>"), ByteString("</header1111>")))
+    val paths = Set.empty[XMLInstruction]
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r.head.attributes(AkkaXMLParser.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<header><moreBytes/></header1111>"
     }
   }
 
