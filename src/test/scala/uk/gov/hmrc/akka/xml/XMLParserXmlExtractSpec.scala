@@ -54,6 +54,42 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "extract max size value when the bytes are split" in {
+    val source = Source(List(ByteString("<xml><header><i"),
+      ByteString("d>12"),
+      ByteString("3"),
+      ByteString("45</id>"),
+      ByteString("</header></xml>")))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+
+    whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
+        XMLElement(List(), Map(AkkaXMLParser.STREAM_MAX_SIZE -> "Stream size is : 42, max allowed is 40")
+          , Some(AkkaXMLParser.STREAM_MAX_SIZE)),
+        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
+    }
+  }
+
+  it should "extract empty size value when source is empty" in {
+    val source = Source.single(ByteString(""))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+    whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(AkkaXMLParser.STREAM_IS_EMPTY -> "Stream is empty")
+          , Some(AkkaXMLParser.STREAM_IS_EMPTY))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe ""
+    }
+  }
+
   it should "extract a single value when the bytes are split" in {
     val source = Source(List(ByteString("<xml><header><i"),
       ByteString("d>12"),
