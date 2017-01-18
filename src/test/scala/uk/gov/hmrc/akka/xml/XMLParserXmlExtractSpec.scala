@@ -75,7 +75,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
-  it should "extract empty size value when source is empty" in {
+  it should "empty size value when source is empty" in {
     val source = Source.single(ByteString(""))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
