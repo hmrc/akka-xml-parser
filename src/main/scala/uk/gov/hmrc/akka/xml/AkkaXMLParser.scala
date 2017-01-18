@@ -108,11 +108,11 @@ object AkkaXMLParser {
 
           maxSize.map(x => {
             if (totalReceivedLength > x)
-              throw MaxSizeError(s"Stream size is : $totalReceivedLength, max allowed is $x")
+              throw MaxSizeError()
           })
 
           if (totalReceivedLength == 0)
-            throw EmptyStreamError(s"Stream is empty")
+            throw EmptyStreamError()
 
           parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
           advanceParser()
@@ -163,13 +163,13 @@ object AkkaXMLParser {
               completeStage()
             case e: MaxSizeError =>
               emitStage(
-                XMLElement(Nil, Map(STREAM_MAX_SIZE -> e.message), Some(STREAM_MAX_SIZE)),
+                XMLElement(Nil, Map.empty, Some(STREAM_MAX_SIZE)),
                 XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
               )(ByteString(incompleteBytes.toArray ++ chunk))
               completeStage()
             case e: EmptyStreamError =>
               emitStage(
-                XMLElement(Nil, Map(STREAM_IS_EMPTY -> e.message), Some(STREAM_IS_EMPTY))
+                XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY))
               )(ByteString(Array.empty[Byte]))
               completeStage()
             case e: ParserValidationError =>

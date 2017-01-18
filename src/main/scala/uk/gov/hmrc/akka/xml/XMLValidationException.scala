@@ -25,6 +25,6 @@ class XMLValidationException extends Exception("XML validation was not completed
 
 trait ParserValidationError extends NoStackTrace
 
-case class MaxSizeError(message: String) extends ParserValidationError
+case class MaxSizeError() extends ParserValidationError
 
-case class EmptyStreamError(message: String) extends ParserValidationError
+case class EmptyStreamError() extends ParserValidationError

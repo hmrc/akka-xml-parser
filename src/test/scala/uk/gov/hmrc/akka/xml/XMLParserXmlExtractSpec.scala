@@ -65,8 +65,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_MAX_SIZE -> "Stream size is : 42, max allowed is 40")
-          , Some(AkkaXMLParser.STREAM_MAX_SIZE)),
+        XMLElement(List(), Map.empty, Some(AkkaXMLParser.STREAM_MAX_SIZE)),
         XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
       )
     }
@@ -81,8 +80,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_IS_EMPTY -> "Stream is empty")
-          , Some(AkkaXMLParser.STREAM_IS_EMPTY))
+        XMLElement(List(), Map.empty, Some(AkkaXMLParser.STREAM_IS_EMPTY))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
