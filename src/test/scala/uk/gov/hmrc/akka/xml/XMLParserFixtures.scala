@@ -33,8 +33,8 @@ trait XMLParserFixtures {
     implicit val system = ActorSystem("XMLParser")
     implicit val mat = ActorMaterializer()
 
-    def parseToXMLElements(instructions: Set[XMLInstruction]) = Flow[ByteString]
-      .via(AkkaXMLParser.parser(instructions))
+    def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None) = Flow[ByteString]
+      .via(AkkaXMLParser.parser(instructions,maxSize))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
