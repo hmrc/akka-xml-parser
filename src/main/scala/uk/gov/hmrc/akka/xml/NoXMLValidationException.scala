@@ -21,7 +21,9 @@ import scala.util.control.NoStackTrace
 /**
   * Created by abhishek on 19/12/16.
   */
-class XMLValidationException extends Exception("XML validation was not completed.")
+class NoXMLValidationException extends NoStackTrace
+
+class NoXMLValidationWithinSizeException extends NoStackTrace
 
 trait ParserValidationError extends NoStackTrace
 
