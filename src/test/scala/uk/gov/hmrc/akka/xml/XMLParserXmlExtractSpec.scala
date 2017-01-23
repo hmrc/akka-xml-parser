@@ -88,6 +88,20 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "retrun NO_VALIDATION_FOUND_FAILURE when no validation was performed till validationMaxSize" in {
+    val source = Source.single(ByteString(""))
+    val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+    whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map.empty, Some(AkkaXMLParser.STREAM_IS_EMPTY))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe ""
+    }
+  }
+
+
   it should "extract a single value when the bytes are split" in {
     val source = Source(List(ByteString("<xml><header><i"),
       ByteString("d>12"),
