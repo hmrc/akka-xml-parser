@@ -172,7 +172,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, None, Some(5)))) { r =>
       println(r)
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.NO_VALIDATION_FOUND_FAILURE -> ""), Some(AkkaXMLParser.NO_VALIDATION_FOUND_FAILURE)),
+        XMLElement(List(), Map(AkkaXMLParser.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(AkkaXMLParser.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
         XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "16"), Some(AkkaXMLParser.STREAM_SIZE))
       )
     }
@@ -197,7 +197,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.VALIDATION_FAILURE -> ""), Some(AkkaXMLParser.VALIDATION_FAILURE)),
+        XMLElement(List(), Map(AkkaXMLParser.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(AkkaXMLParser.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)),
         XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "38"), Some(AkkaXMLParser.STREAM_SIZE))
       )
     }
@@ -210,7 +210,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.VALIDATION_FAILURE -> ""), Some(AkkaXMLParser.VALIDATION_FAILURE)),
+        XMLElement(List(), Map(AkkaXMLParser.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(AkkaXMLParser.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)),
         XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "38"), Some(AkkaXMLParser.STREAM_SIZE))
       )
     }

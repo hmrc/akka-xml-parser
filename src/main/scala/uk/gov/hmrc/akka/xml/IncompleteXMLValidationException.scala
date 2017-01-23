@@ -21,9 +21,9 @@ import scala.util.control.NoStackTrace
 /**
   * Created by abhishek on 19/12/16.
   */
-class NoXMLValidationException extends NoStackTrace
+class IncompleteXMLValidationException extends NoStackTrace
 
-class NoXMLValidationWithinSizeException extends NoStackTrace
+class NoValidationTagsFoundWithinFirstNBytesException extends NoStackTrace
 
 trait ParserValidationError extends NoStackTrace
 

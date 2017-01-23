@@ -37,9 +37,10 @@ object AkkaXMLParser {
   val STREAM_IS_EMPTY = "Stream is empty"
   val STREAM_SIZE_LESS_AND_BELOW_MIN = "Stream Size"
   val STREAM_SIZE = "Stream Size"
-  val NO_VALIDATION_FOUND_FAILURE = "No validation found failure"
+  val NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE = "No validation tags were found in first n bytes failure"
+  // n is validationMaxSize
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
-  val VALIDATION_FAILURE = "Validation failure"
+  val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
   /**
@@ -121,7 +122,7 @@ object AkkaXMLParser {
               if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
                 if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
                   != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-                  throw new NoXMLValidationWithinSizeException
+                  throw new NoValidationTagsFoundWithinFirstNBytesException
                 }
           })
 
@@ -144,7 +145,7 @@ object AkkaXMLParser {
           if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
             if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
               != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-              throw new NoXMLValidationException
+              throw new IncompleteXMLValidationException
             }
 
           if (node.nonEmpty)
@@ -162,7 +163,6 @@ object AkkaXMLParser {
               XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
             )(ByteString(Array.empty[Byte]))
           }
-
         }
 
         def processStage(f: () => Unit) = {
@@ -187,15 +187,17 @@ object AkkaXMLParser {
                 XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY))
               )(ByteString(Array.empty[Byte]))
               completeStage()
-            case e: NoXMLValidationWithinSizeException =>
+            case e: NoValidationTagsFoundWithinFirstNBytesException =>
               emitStage(
-                XMLElement(Nil, Map(NO_VALIDATION_FOUND_FAILURE -> ""), Some(NO_VALIDATION_FOUND_FAILURE)),
+                XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
+                  Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
                 XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
               )(ByteString(incompleteBytes.toArray ++ chunk))
               completeStage()
-            case e: NoXMLValidationException =>
+            case e: IncompleteXMLValidationException =>
               emitStage(
-                XMLElement(Nil, Map(VALIDATION_FAILURE -> ""), Some(VALIDATION_FAILURE)),
+                XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
+                  Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)),
                 XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
               )(ByteString(incompleteBytes.toArray ++ chunk))
               completeStage()
@@ -251,7 +253,6 @@ object AkkaXMLParser {
                   case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
                     nodesToProcess += parser.getLocalName
 
-
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
                     val lastChunkOffset = totalReceivedLength - chunk.length
                     val newBytes = (streamBuffer.toArray ++ chunk).slice(start -
@@ -299,7 +300,7 @@ object AkkaXMLParser {
                         val ele = validators.get(e) match {
                           case Some(x) => (e, x ++= newBytes)
                           case None => {
-                            throw new NoXMLValidationException
+                            throw new IncompleteXMLValidationException
                           }
                         }
                         validators += ele
