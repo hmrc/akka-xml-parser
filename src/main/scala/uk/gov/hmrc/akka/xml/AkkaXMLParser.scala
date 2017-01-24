@@ -184,7 +184,8 @@ object AkkaXMLParser {
               completeStage()
             case e: EmptyStreamError =>
               emitStage(
-                XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY))
+                XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)),
+                XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
               )(ByteString(Array.empty[Byte]))
               completeStage()
             case e: NoValidationTagsFoundWithinFirstNBytesException =>
