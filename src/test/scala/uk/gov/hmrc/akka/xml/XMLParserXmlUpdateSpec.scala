@@ -88,9 +88,6 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe "<xml><header><foo>barbar</foo></header></xml>"
     }
 
-    whenReady(source.runWith(parseToPrint(instructions))) { r =>
-    }
-
   }
 
   it should "update an element where the end tag is split over multiple chunks" in {

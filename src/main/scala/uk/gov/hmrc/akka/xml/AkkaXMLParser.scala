@@ -302,7 +302,7 @@ object AkkaXMLParser {
 
                       case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
                         val lastChunkOffset = totalReceivedLength - chunk.length
-                        val newBytes = (chunk).slice(start - lastChunkOffset
+                        val newBytes = (streamBuffer.toArray ++ chunk).slice(start - lastChunkOffset
                           + incompleteBytesLength,
                           end - lastChunkOffset + incompleteBytesLength)
 
@@ -327,6 +327,7 @@ object AkkaXMLParser {
                           end - lastChunkOffset)
                         chunk = newBytes
                         if (streamBuffer.length > 0) streamBuffer.remove(start - lastChunkOffset + incompleteBytesLength, incompleteBytesLength)
+
                         nodesToProcess += parser.getLocalName
 
                       case x =>
