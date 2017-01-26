@@ -21,6 +21,10 @@ package uk.gov.hmrc.akka.xml
   */
 trait ParsingDataFunctions {
 
+  def deleteBytesInChunk(chunk: Array[Byte], from: Int, to:Int): Array[Byte] = {
+    chunk.slice(0, from) ++ chunk.slice(to, chunk.length)
+  }
+
   def insertBytesInChunk(chunk: Array[Byte], at: Int, insert: Array[Byte]): Array[Byte] = {
     chunk.slice(0, at) ++ insert
   }
