@@ -268,6 +268,14 @@ object AkkaXMLParser {
                     }
                     nodesToProcess += parser.getLocalName
 
+                  case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
+                    val lastChunkOffset = totalReceivedLength - chunk.length
+                    val newBytes = deleteBytesInChunk(streamBuffer.toArray ++ chunk, start - lastChunkOffset + incompleteBytesLength,
+                      end - lastChunkOffset + incompleteBytesLength)
+                    chunk = newBytes
+                    if (streamBuffer.length > 0) streamBuffer.remove(start - lastChunkOffset + incompleteBytesLength, incompleteBytesLength)
+                    nodesToProcess += parser.getLocalName
+
                   case x =>
                 })
                 incompleteBytes.clear()
@@ -312,6 +320,16 @@ object AkkaXMLParser {
                           case x =>
                         }
                         nodesToProcess -= parser.getLocalName
+
+                      case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
+                        val lastChunkOffset = totalReceivedLength - chunk.length
+                        val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset,
+                          end - lastChunkOffset)
+                        chunk = newBytes
+                        if (streamBuffer.length > 0) streamBuffer.remove(start - lastChunkOffset + incompleteBytesLength, incompleteBytesLength)
+
+                        nodesToProcess += parser.getLocalName
+
                       case x =>
                     }
                   })
@@ -342,6 +360,13 @@ object AkkaXMLParser {
                           case None => (e, ArrayBuffer.empty ++= newBytes)
                         }
                         validators += ele
+
+                      case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
+                        val lastChunkOffset = totalReceivedLength - chunk.length
+                        val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset,
+                          end - lastChunkOffset)
+                        chunk = newBytes
+
                       case _ =>
                     }
                   })
