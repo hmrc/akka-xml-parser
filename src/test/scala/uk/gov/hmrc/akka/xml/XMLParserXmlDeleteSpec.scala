@@ -79,8 +79,6 @@ class XMLParserXmlDeleteSpec extends FlatSpec
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      println(r.utf8String )
-
       r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
@@ -133,4 +131,25 @@ class XMLParserXmlDeleteSpec extends FlatSpec
   }
 
 
+  it should "insert an element and delete an element" in {
+    val source = Source.single(ByteString("<xml><header></header><body><title>hello</title></body></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
+
+  it should "insert an element and delete an element - multiple chunks" in {
+    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
 }
