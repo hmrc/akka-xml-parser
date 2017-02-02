@@ -115,7 +115,6 @@ class XMLParserXmlUpdateSpec
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
-
   }
 
   it should "not insert an element where it does not exist and there is an update without upsert instruction" in {
