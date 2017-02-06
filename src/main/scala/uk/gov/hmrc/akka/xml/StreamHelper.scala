@@ -75,7 +75,9 @@ trait StreamHelper {
     collection
   }.toMap
 
-  def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String], isEmptyElement: Boolean)(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
+  def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String], isEmptyElement: Boolean,
+                        isMarkedForDeletedAsWell: Boolean = false)
+                       (implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
     val prefix = getPrefix
 
     val startElement = attributes.foldLeft(s"<$prefix${xPath.last}") {
@@ -83,7 +85,7 @@ trait StreamHelper {
     } + ">"
     val value = elemText.getOrElse("")
     val endElement = getEndElement(xPath, prefix)
-    if (isEmptyElement) s"$startElement$value$endElement"
+    if (isMarkedForDeletedAsWell || isEmptyElement) s"$startElement$value$endElement"
     else s"$startElement$value"
   }
 
