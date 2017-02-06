@@ -254,9 +254,8 @@ object AkkaXMLParser {
                     val newBytes = getHeadAndTail(chunk, start - lastChunkOffset,
                       end - lastChunkOffset, input, incompleteBytesLength)
                     streamBuffer ++= newBytes._1
-
+                    incompleteBytesLength = 0
                     chunk = newBytes._2
-                    println("input ------" + new String(input))
                     completedInstructions += e
                     nodesToProcess += parser.getLocalName
 
@@ -282,11 +281,9 @@ object AkkaXMLParser {
                     val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
                       end - lastChunkOffset - (inputChunkLength - chunk.length))
                     chunk = newBytes
-                    println(incompleteBytesLength + "-streamBuffer ------111" + new String(streamBuffer.toArray))
 
                     if (streamBuffer.length - incompleteBytesLength >= 0) streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
                     nodesToProcess += parser.getLocalName
-                    println("streamBuffer ------222" + new String(streamBuffer.toArray))
 
                   case x =>
                 })
@@ -337,11 +334,8 @@ object AkkaXMLParser {
                         val lastChunkOffset = totalReceivedLength - inputChunkLength
                         chunk = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
                           end - lastChunkOffset - (inputChunkLength - chunk.length))
-                        println(streamBuffer.length + "ppppppppp--------" + new String(chunk))
-                        println(incompleteBytesLength + "------" + new String(streamBuffer.toArray))
                         if ((streamBuffer.length - incompleteBytesLength) >= 0)
                           streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
-                        println(incompleteBytesLength + "------" + new String(streamBuffer.toArray))
                         nodesToProcess += parser.getLocalName
 
                       case x =>

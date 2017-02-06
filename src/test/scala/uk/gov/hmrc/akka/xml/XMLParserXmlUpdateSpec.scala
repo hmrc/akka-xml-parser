@@ -122,9 +122,6 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-
-      println(r.utf8String)
-      println("<xml><header><foo><bar>bar</bar></foo></header></xml>")
       r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
     }
   }
@@ -134,7 +131,7 @@ class XMLParserXmlUpdateSpec
       ByteString("r><foo"), ByteString(">fo111o</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-    r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -264,7 +261,7 @@ class XMLParserXmlUpdateSpec
     val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-    r.utf8String shouldBe expected
+      r.utf8String shouldBe expected
     }
   }
 
