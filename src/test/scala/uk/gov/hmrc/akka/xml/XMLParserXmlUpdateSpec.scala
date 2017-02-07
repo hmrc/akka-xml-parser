@@ -99,12 +99,39 @@ class XMLParserXmlUpdateSpec
     }
   }
 
+  it should "update and delete a block of xml element" in {
+    val source = Source.single(ByteString("<xml><header><foo><taz>tar</taz></foo></header></xml>"))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true),
+      XMLDelete(Seq("xml", "header", "foo"))
+    )
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+    }
+  }
+
+  it should "update and delete a block of xml element - data is chunked" in {
+    val source = Source(List(ByteString("<xml><header><fo"),
+      ByteString("o><taz>tar</ta"),
+      ByteString("z></foo></he"),
+      ByteString("ader></xml>")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true),
+      XMLDelete(Seq("xml", "header", "foo"))
+    )
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+    }
+  }
+
   it should "update an element where multiple elements are split over multiple chunks" in {
     val source = Source(List(ByteString("<xm"), ByteString("l><heade"),
       ByteString("r><foo"), ByteString(">fo111o</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-    r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -234,7 +261,7 @@ class XMLParserXmlUpdateSpec
     val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-    r.utf8String shouldBe expected
+      r.utf8String shouldBe expected
     }
   }
 

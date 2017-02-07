@@ -244,10 +244,17 @@ object AkkaXMLParser {
                   case e@XMLUpdate(`node`, value, attributes, _) =>
                     //TODO : Refactor the below code
                     val lastChunkOffset = totalReceivedLength - chunk.length
-                    val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement)(parser).getBytes
+
+                    //Check if same node is been instructed to delete. If so new bytes should have end tags as well.
+                    val isMarkedForDeletedAsWell = instructions.collect {
+                      case e: XMLDelete if (e.xPath == node.toList) => e
+                    }.nonEmpty
+
+                    val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement, isMarkedForDeletedAsWell)(parser).getBytes
                     val newBytes = getHeadAndTail(chunk, start - lastChunkOffset,
                       end - lastChunkOffset, input, incompleteBytesLength)
                     streamBuffer ++= newBytes._1
+                    incompleteBytesLength = 0
                     chunk = newBytes._2
                     completedInstructions += e
                     nodesToProcess += parser.getLocalName
@@ -274,7 +281,8 @@ object AkkaXMLParser {
                     val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
                       end - lastChunkOffset - (inputChunkLength - chunk.length))
                     chunk = newBytes
-                    if (streamBuffer.length > 0) streamBuffer.remove(0, incompleteBytesLength)
+
+                    if (streamBuffer.length - incompleteBytesLength >= 0) streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
                     nodesToProcess += parser.getLocalName
 
                   case x =>
@@ -324,10 +332,10 @@ object AkkaXMLParser {
 
                       case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
                         val lastChunkOffset = totalReceivedLength - inputChunkLength
-                        val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
+                        chunk = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
                           end - lastChunkOffset - (inputChunkLength - chunk.length))
-                        chunk = newBytes
-                        if (streamBuffer.length > 0) streamBuffer.remove(0, incompleteBytesLength)
+                        if ((streamBuffer.length - incompleteBytesLength) >= 0)
+                          streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
                         nodesToProcess += parser.getLocalName
 
                       case x =>

@@ -170,7 +170,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "bar"), Seq("xml", "body"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths, None, Some(5)))) { r =>
-      println(r)
       r shouldBe Set(
         XMLElement(List(), Map(AkkaXMLParser.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(AkkaXMLParser.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
         XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "16"), Some(AkkaXMLParser.STREAM_SIZE))
