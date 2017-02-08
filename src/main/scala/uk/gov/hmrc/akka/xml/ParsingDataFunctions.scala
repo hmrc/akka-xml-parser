@@ -21,15 +21,15 @@ package uk.gov.hmrc.akka.xml
   */
 trait ParsingDataFunctions {
 
-  def deleteBytesInChunk(chunk: Array[Byte], from: Int, to:Int): Array[Byte] = {
-    chunk.slice(0, from) ++ chunk.slice(to, chunk.length)
+  def deleteBytesInChunk(chunks: Array[Byte], offset: Int, at: Int) = {
+    chunks.slice(offset, at)
   }
 
-  def insertBytesInChunk(chunk: Array[Byte], at: Int, insert: Array[Byte]): Array[Byte] = {
-    chunk.slice(0, at) ++ insert
+  def insertBytesInChunk(chunk: Array[Byte], offset: Int, at: Int, insert: Array[Byte]): Array[Byte] = {
+    chunk.slice(offset, at) ++ insert
   }
 
-  def getHeadAndTail(chunks: Array[Byte], at: Int, till: Int, insert: Array[Byte], offset: Int) = {
-    (chunks.slice(0, at) ++ insert.slice(offset, insert.length), chunks.slice(till, chunks.length))
+  def getHead(chunks: Array[Byte], offset: Int, at: Int, insert: Array[Byte], incompleteBytesLength: Int) = {
+    (chunks.slice(offset, at) ++ insert)
   }
 }

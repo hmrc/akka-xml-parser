@@ -110,6 +110,8 @@ class XMLParserXmlDeleteSpec extends FlatSpec
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
+
+      println(r.utf8String)
       r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
