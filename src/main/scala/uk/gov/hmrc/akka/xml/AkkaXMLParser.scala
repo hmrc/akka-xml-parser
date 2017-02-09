@@ -27,6 +27,7 @@ import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXML
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.{Failure, Success, Try}
 
 /**
   * Created by abhishek on 1/12/16.
@@ -115,65 +116,57 @@ object AkkaXMLParser {
           chunkOffset = 0
           totalReceivedLength += chunk.length
           inputChunkLength = chunk.length
-          maxSize.map(x => {
-            if (totalReceivedLength > x)
-              throw MaxSizeError()
-          })
 
-          validationMaxSize.map(validationMaxSize => {
-            if (totalReceivedLength > (validationMaxSize + validationMaxSizeOffset))
-              if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
-                if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
-                  != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-                  throw new NoValidationTagsFoundWithinFirstNBytesException
+          (maxSize, validationMaxSize) match {
+            case _ if totalReceivedLength == 0 => Failure(EmptyStreamError())
+            case (Some(size), _) if totalReceivedLength > size => Failure(MaxSizeError())
+            case (_, Some(validationSize))
+              if totalReceivedLength > (validationSize + validationMaxSizeOffset) &&
+                instructions.exists(!completedInstructions.contains(_)) =>
+              Failure(new NoValidationTagsFoundWithinFirstNBytesException)
+            case _ =>
+              Try {
+                parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+                advanceParser()
+                push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+                previousChunkSize = chunk.length
+                streamBuffer.clear()
+                if (incompleteBytes.nonEmpty) {
+                  streamBuffer ++= incompleteBytes
                 }
-          })
-
-          if (totalReceivedLength == 0)
-            throw EmptyStreamError()
-
-          parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
-          advanceParser()
-          push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-          previousChunkSize = chunk.length
-          streamBuffer.clear()
-          if (incompleteBytes.nonEmpty) {
-            streamBuffer ++= incompleteBytes
+                chunk = Array.empty[Byte]
+              }
           }
-          chunk = Array.empty[Byte]
         }
 
-        def processOnUpstreamFinish() = {
-          advanceParser()
-
-          if (instructions.count(x => x.isInstanceOf[XMLValidate]) > 0)
-            if (completedInstructions.count(x => x.isInstanceOf[XMLValidate])
-              != instructions.count(x => x.isInstanceOf[XMLValidate])) {
-              throw new IncompleteXMLValidationException
+        def processOnUpstreamFinish(): Try[Unit] = {
+          for {
+            _ <- Try(advanceParser())
+            _ <- if ((instructions.count(x => x.isInstanceOf[XMLValidate]) > 0) &&
+              (completedInstructions.count(x => x.isInstanceOf[XMLValidate]) != instructions.count(x => x.isInstanceOf[XMLValidate]))) {
+              Failure(new IncompleteXMLValidationException)
             }
-
-          if (node.nonEmpty)
-            xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
-              (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
-
-          if (streamBuffer.toArray.length > 0) {
-            emitStage(
-              XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-            )(ByteString(incompleteBytes.toArray ++ chunk))
-            emit(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-          }
-          else {
-            emitStage(
-              XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-            )(ByteString(Array.empty[Byte]))
+            else Success()
+          } yield {
+            if (node.nonEmpty)
+              xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
+                (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
+            if (streamBuffer.toArray.length > 0) {
+              emitStage(
+                XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(incompleteBytes.toArray ++ chunk))
+              emit(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+            }
+            else {
+              emitStage(
+                XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(Array.empty[Byte]))
+            }
           }
         }
 
-        def processStage(f: () => Unit) = {
-          try {
-            f()
-          }
-          catch {
+        def processStage(f: () => Try[Unit]) = {
+          f().recover {
             case e: WFCException =>
               emitStage(
                 XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)),

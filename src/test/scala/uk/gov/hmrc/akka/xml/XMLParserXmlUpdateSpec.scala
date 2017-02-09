@@ -299,6 +299,7 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe expected
     }
   }
+
   it should "insert elements with namespaces and input in chunks" in {
     val source = Source(List(
       ByteString("""<ns:xml xml"""),
