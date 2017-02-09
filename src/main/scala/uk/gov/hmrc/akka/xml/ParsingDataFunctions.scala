@@ -24,8 +24,4 @@ trait ParsingDataFunctions {
   def insertBytesInChunk(chunk: Array[Byte], offset: Int, at: Int, insert: Array[Byte]): Array[Byte] = {
     chunk.slice(offset, at) ++ insert
   }
-
-  def getHead(chunks: Array[Byte], offset: Int, at: Int, insert: Array[Byte], incompleteBytesLength: Int) = {
-    chunks.slice(offset, at) ++ insert
-  }
 }
