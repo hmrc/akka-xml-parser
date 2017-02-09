@@ -49,8 +49,6 @@ class XMLParserXmlUpdateSpec
     val expected = "<xml><header><foo>bar</foo></header></xml>"
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
-      println(expected)
       r.utf8String shouldBe expected
     }
   }
@@ -87,7 +85,6 @@ class XMLParserXmlUpdateSpec
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("barbar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
       r.utf8String shouldBe "<xml><header><foo>barbar</foo></header></xml>"
     }
 
@@ -109,8 +106,6 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-
-      println(r.utf8String)
       r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
     }
   }
@@ -121,12 +116,10 @@ class XMLParserXmlUpdateSpec
       ByteString("z></foo></he"),
       ByteString("ader></xml>")))
     val instructions = Set[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)//,
-      //XMLDelete(Seq("xml", "header", "foo"))
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
       r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
     }
   }
@@ -146,8 +139,6 @@ class XMLParserXmlUpdateSpec
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
-
       r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
@@ -305,8 +296,6 @@ class XMLParserXmlUpdateSpec
     val instructions = Set[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
     val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-
-      println(r.utf8String)
       r.utf8String shouldBe expected
     }
   }
