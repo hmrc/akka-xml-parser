@@ -133,6 +133,8 @@ class XMLParserXmlValidateSpec extends FlatSpec
       r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
     }
   }
+
+
   it should "validate over multiple chunks where end tag is also spit in chunks" in {
     val source = Source(List(ByteString("<xml><body>"), ByteString("<fo123o>test</fo"), ByteString("123"),
       ByteString("o><bar>test</bar></bo"), ByteString("dy></xml>")))
@@ -146,7 +148,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-
       r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
     }
   }

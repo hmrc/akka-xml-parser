@@ -39,7 +39,6 @@ object AkkaXMLParser {
   val STREAM_SIZE_LESS_AND_BELOW_MIN = "Stream Size"
   val STREAM_SIZE = "Stream Size"
   val NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE = "No validation tags were found in first n bytes failure"
-  // n is validationMaxSize
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
@@ -88,16 +87,18 @@ object AkkaXMLParser {
           }
         })
 
+        var chunkOffset = 0
         var chunk = Array[Byte]()
         var totalReceivedLength = 0
         var incompleteBytesLength = 0
         var isCharacterBuffering = false
         var inputChunkLength = 0
+        var previousChunkSize = 0
 
 
         val node = ArrayBuffer[String]()
-        val nodesToProcess = ArrayBuffer[String]()
-        val streamBuffer = ArrayBuffer[Byte]()
+        //val nodesToProcess = mutable.Set[List[String]]()
+        var streamBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
         val completedInstructions = mutable.Set[XMLInstruction]()
         val xmlElements = mutable.Set[XMLElement]()
@@ -112,6 +113,7 @@ object AkkaXMLParser {
 
         def processOnPush() = {
           chunk = grab(in).toArray
+          chunkOffset = 0
           totalReceivedLength += chunk.length
           inputChunkLength = chunk.length
 
@@ -120,19 +122,20 @@ object AkkaXMLParser {
             case (Some(size), _) if totalReceivedLength > size => Failure(MaxSizeError())
             case (_, Some(validationSize))
               if totalReceivedLength > (validationSize + validationMaxSizeOffset) &&
-              instructions.exists(!completedInstructions.contains(_)) =>
+                instructions.exists(!completedInstructions.contains(_)) =>
               Failure(new NoValidationTagsFoundWithinFirstNBytesException)
             case _ =>
               Try {
                 parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
                 advanceParser()
                 push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+                previousChunkSize = chunk.length
                 streamBuffer.clear()
                 if (incompleteBytes.nonEmpty) {
                   streamBuffer ++= incompleteBytes
                 }
                 chunk = Array.empty[Byte]
-            }
+              }
           }
         }
 
@@ -145,22 +148,22 @@ object AkkaXMLParser {
             }
             else Success()
           } yield {
-                if (node.nonEmpty)
-                  xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
-                    (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
-                if (streamBuffer.toArray.length > 0) {
-                  emitStage(
-                    XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-                  )(ByteString(incompleteBytes.toArray ++ chunk))
-                  emit(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
-                }
-                else {
-                  emitStage(
-                    XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-                  )(ByteString(Array.empty[Byte]))
-                }
-              }
+            if (node.nonEmpty)
+              xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
+                (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
+            if (streamBuffer.toArray.length > 0) {
+              emitStage(
+                XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(incompleteBytes.toArray ++ chunk))
+              emit(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
+            }
+            else {
+              emitStage(
+                XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(Array.empty[Byte]))
+            }
           }
+        }
 
         def processStage(f: () => Try[Unit]) = {
           f().recover {
@@ -211,16 +214,17 @@ object AkkaXMLParser {
           if (parser.hasNext) {
             val event = parser.next()
             val (start, end) = getBounds(parser)
-            val isEmptyElement = parser.isEmptyElement
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                val lastChunkOffset = totalReceivedLength - chunk.length
                 if (chunk.length > 0) {
-                  val lastCompleteElementInChunk = chunk.slice(0,
-                    start - lastChunkOffset)
+                  val lastCompleteElementInChunk = chunk.slice(0, start)
                   incompleteBytes ++= chunk.slice(lastCompleteElementInChunk.length, chunk.length)
-                  if (lastCompleteElementInChunk.length == 0 && (end - start) > chunk.length) streamBuffer.clear()
-                  else streamBuffer ++= lastCompleteElementInChunk
+
+                  if (lastCompleteElementInChunk.length == 0 && (end - start) > chunk.length)
+                    streamBuffer.clear()
+                  else
+                    streamBuffer ++= lastCompleteElementInChunk.slice(chunkOffset, lastCompleteElementInChunk.length)
+
                   incompleteBytesLength = incompleteBytes.length
                 }
 
@@ -231,51 +235,33 @@ object AkkaXMLParser {
                     val keys = getPredicateMatch(parser, e.attributes)
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
-                    nodesToProcess += parser.getLocalName
 
-                  case e@XMLUpdate(`node`, value, attributes, _) =>
-                    //TODO : Refactor the below code
-                    val lastChunkOffset = totalReceivedLength - chunk.length
-
-                    //Check if same node is been instructed to delete. If so new bytes should have end tags as well.
-                    val isMarkedForDeletedAsWell = instructions.collect {
-                      case e: XMLDelete if e.xPath == node.toList => e
-                    }.nonEmpty
-
-                    val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement, isMarkedForDeletedAsWell)(parser).getBytes
-                    val newBytes = getHeadAndTail(chunk, start - lastChunkOffset,
-                      end - lastChunkOffset, input, incompleteBytesLength)
-                    streamBuffer ++= newBytes._1
-                    incompleteBytesLength = 0
-                    chunk = newBytes._2
-                    completedInstructions += e
-                    nodesToProcess += parser.getLocalName
-
-                  case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
-                    nodesToProcess += parser.getLocalName
+                  case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
+                    e.xPath match {
+                      case path if path == node.toList =>
+                        val input = getUpdatedElement(e.xPath, e.attributes, e.value)(parser).getBytes
+                        streamBuffer = getStreamBuffer
+                        streamBuffer ++= insertBytesInChunk(chunk, chunkOffset, start, input)
+                        incompleteBytesLength = 0
+                        chunkOffset = end
+                      case _ =>
+                        chunkOffset = end
+                    }
 
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
-                    val lastChunkOffset = totalReceivedLength - chunk.length
-                    val newBytes = (streamBuffer.toArray ++ chunk).slice(start -
-                      lastChunkOffset + incompleteBytesLength,
-                      end - lastChunkOffset + incompleteBytesLength)
-                    if (!isEmptyElement) {
+                    val newBytes = (streamBuffer.toArray ++ chunk).slice(start + incompleteBytesLength, end + incompleteBytesLength)
+                    if (!parser.isEmptyElement) {
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++ newBytes)
                         case None => (e, ArrayBuffer.empty ++= newBytes)
                       }
                       validators += ele
                     }
-                    nodesToProcess += parser.getLocalName
 
                   case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
-                    val lastChunkOffset = totalReceivedLength - inputChunkLength
-                    val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
-                      end - lastChunkOffset - (inputChunkLength - chunk.length))
-                    chunk = newBytes
-
-                    if (streamBuffer.length - incompleteBytesLength >= 0) streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
-                    nodesToProcess += parser.getLocalName
+                    streamBuffer = getStreamBuffer
+                    streamBuffer ++= insertBytesInChunk(chunk, chunkOffset, start, Array.empty[Byte])
+                    chunkOffset = end
 
                   case x =>
                 })
@@ -284,91 +270,79 @@ object AkkaXMLParser {
 
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
-                if (nodesToProcess.nonEmpty)
-                  instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
-                    e match {
-                      case e@XMLExtract(`node`, _) =>
-                        update(xmlElements, node, Some(bufferedText.toString()))
-                        nodesToProcess -= parser.getLocalName
+                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                  e match {
+                    case e@XMLExtract(`node`, _) =>
+                      update(xmlElements, node, Some(bufferedText.toString()))
 
-                      case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
-                        val lastChunkOffset = totalReceivedLength - chunk.length
-                        val input = getUpdatedElement(e.xPath, e.attributes, e.value, isEmptyElement = true)(parser).getBytes
+                    case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
+                      val input = getUpdatedElement(e.xPath, e.attributes, e.value)(parser).getBytes
+                      streamBuffer = getStreamBuffer
+                      streamBuffer ++= insertBytesInChunk(chunk, chunkOffset, start, input)
+                      completedInstructions += e
+                      chunkOffset = start
 
-                        val newBytes = insertBytesInChunk(chunk, start - lastChunkOffset, input)
-                        chunk = chunk.slice(start - lastChunkOffset, chunk.length)
-                        streamBuffer ++= newBytes
-                        completedInstructions += e
-                        nodesToProcess -= parser.getLocalName
+                    case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
+                      streamBuffer = getStreamBuffer
+                      e.xPath match {
+                        case path if path == node.toList =>
+                          completedInstructions += e
+                        case _ =>
+                      }
+                      chunkOffset = end
 
-                      case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
-                        val lastChunkOffset = totalReceivedLength - chunk.length
-                        val newBytes = (streamBuffer.toArray ++ chunk).slice(start - lastChunkOffset
-                          + incompleteBytesLength,
-                          end - lastChunkOffset + incompleteBytesLength)
+                    case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
+                      val newBytes = (streamBuffer.toArray ++ chunk).slice(start + incompleteBytesLength, end + incompleteBytesLength)
+                      val ele = validators.get(e) match {
+                        case Some(x) => (e, x ++= newBytes)
+                        case None => throw new IncompleteXMLValidationException
+                      }
+                      validators += ele
+                      validators.foreach {
+                        case (s@XMLValidate(_, `node`, f), testData) =>
+                          f(new String(testData.toArray)).map(throw _)
+                          completedInstructions += e
+                        case x =>
+                      }
 
-                        val ele = validators.get(e) match {
-                          case Some(x) => (e, x ++= newBytes)
-                          case None =>
-                            throw new IncompleteXMLValidationException
-                        }
-                        validators += ele
-                        validators.foreach {
-                          case (s@XMLValidate(_, `node`, f), testData) =>
-                            f(new String(testData.toArray)).map(throw _)
-                            completedInstructions += e
-                          case x =>
-                        }
-                        nodesToProcess -= parser.getLocalName
+                    case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
+                      streamBuffer = getStreamBuffer
+                      chunkOffset = end
 
-                      case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
-                        val lastChunkOffset = totalReceivedLength - inputChunkLength
-                        chunk = deleteBytesInChunk(chunk, start - lastChunkOffset - (inputChunkLength - chunk.length),
-                          end - lastChunkOffset - (inputChunkLength - chunk.length))
-                        if ((streamBuffer.length - incompleteBytesLength) >= 0)
-                          streamBuffer.remove(streamBuffer.length - incompleteBytesLength, incompleteBytesLength)
-                        nodesToProcess += parser.getLocalName
-
-                      case x =>
-                    }
-                  })
+                    case x =>
+                  }
+                })
                 incompleteBytes.clear()
                 bufferedText.clear()
                 node -= parser.getLocalName
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
-                if (nodesToProcess.nonEmpty)
-                  instructions.foreach(f = (e: XMLInstruction) => {
-                    e match {
-                      case e@XMLExtract(`node`, _) =>
-                        val t = parser.getText()
-                        if (t.trim.length > 0) {
-                          isCharacterBuffering = true
-                          bufferedText.append(t)
-                        }
-                      case e@XMLUpdate(`node`, _, _, _) =>
-                        chunk = chunk.slice(end - start, chunk.length)
+                instructions.foreach(f = (e: XMLInstruction) => {
+                  e match {
+                    case e@XMLExtract(`node`, _) =>
+                      val t = parser.getText()
+                      if (t.trim.length > 0) {
+                        isCharacterBuffering = true
+                        bufferedText.append(t)
+                      }
+                    case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
+                      chunkOffset += (end - start)
 
-                      case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
-                        val lastChunkOffset = totalReceivedLength - chunk.length
-                        val newBytes = (streamBuffer.toArray ++ chunk).slice(start - lastChunkOffset + incompleteBytesLength,
-                          end - lastChunkOffset + incompleteBytesLength)
-                        val ele = validators.get(e) match {
-                          case Some(x) => (e, x ++ newBytes)
-                          case None => (e, ArrayBuffer.empty ++= newBytes)
-                        }
-                        validators += ele
+                    case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
+                      val newBytes = (streamBuffer.toArray ++ chunk).slice(start + incompleteBytesLength, end + incompleteBytesLength)
+                      val ele = validators.get(e) match {
+                        case Some(x) => (e, x ++ newBytes)
+                        case None => (e, ArrayBuffer.empty ++= newBytes)
+                      }
+                      validators += ele
 
-                      case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
-                        val lastChunkOffset = totalReceivedLength - chunk.length
-                        val newBytes = deleteBytesInChunk(chunk, start - lastChunkOffset,
-                          end - lastChunkOffset)
-                        chunk = newBytes
+                    case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
+                      chunkOffset += (end - start)
 
-                      case _ =>
-                    }
-                  })
+                    case _ =>
+                  }
+                })
                 if (parser.hasNext) advanceParser()
 
               case x =>
@@ -376,15 +350,22 @@ object AkkaXMLParser {
             }
           }
         }
+
+        private def getStreamBuffer = {
+          if (streamBuffer.length != previousChunkSize)
+            streamBuffer.slice(0, streamBuffer.length - incompleteBytesLength)
+          else streamBuffer
+        }
+
+        private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
+          val start = reader.getLocationInfo.getStartingByteOffset.toInt
+          (
+            if (start == 1) 0 else start - (totalReceivedLength - inputChunkLength),
+            reader.getLocationInfo.getEndingByteOffset.toInt - (totalReceivedLength - inputChunkLength)
+            )
+        }
       }
 
-    private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
-      val start = reader.getLocationInfo.getStartingByteOffset.toInt
-      (
-        if (start == 1) 0 else start,
-        reader.getLocationInfo.getEndingByteOffset.toInt
-        )
-    }
   }
 
 }

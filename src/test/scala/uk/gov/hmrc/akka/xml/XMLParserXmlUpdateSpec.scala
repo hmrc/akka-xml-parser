@@ -99,11 +99,10 @@ class XMLParserXmlUpdateSpec
     }
   }
 
-  it should "update and delete a block of xml element" in {
+  it should "update a block of xml element" in {
     val source = Source.single(ByteString("<xml><header><foo><taz>tar</taz></foo></header></xml>"))
     val instructions = Set[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true),
-      XMLDelete(Seq("xml", "header", "foo"))
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -117,8 +116,7 @@ class XMLParserXmlUpdateSpec
       ByteString("z></foo></he"),
       ByteString("ader></xml>")))
     val instructions = Set[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true),
-      XMLDelete(Seq("xml", "header", "foo"))
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -131,6 +129,7 @@ class XMLParserXmlUpdateSpec
       ByteString("r><foo"), ByteString(">fo111o</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
+
       r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
     }
   }
@@ -275,6 +274,7 @@ class XMLParserXmlUpdateSpec
     val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
+
       r.utf8String shouldBe expected
     }
   }
@@ -284,6 +284,17 @@ class XMLParserXmlUpdateSpec
     val instructions = Set[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
     val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
 
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      r.utf8String shouldBe expected
+    }
+  }
+
+  it should "update an elements with namespaces and input in chunks" in {
+    val source = Source(List(
+      ByteString("""<ns:xml xml"""),
+      ByteString("""ns:ns="test"><ns:bar/></ns:xml>""")))
+    val instructions = Set[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
+    val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
     }
