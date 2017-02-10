@@ -122,7 +122,7 @@ object AkkaXMLParser {
             case (Some(size), _) if totalReceivedLength > size => Failure(MaxSizeError())
             case (_, Some(validationSize))
               if totalReceivedLength > (validationSize + validationMaxSizeOffset) &&
-                instructions.exists(!completedInstructions.contains(_)) =>
+                instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_)) =>
               Failure(new NoValidationTagsFoundWithinFirstNBytesException)
             case _ =>
               Try {
@@ -302,6 +302,7 @@ object AkkaXMLParser {
                         case (s@XMLValidate(_, `node`, f), testData) =>
                           f(new String(testData.toArray)).map(throw _)
                           completedInstructions += e
+
                         case x =>
                       }
 

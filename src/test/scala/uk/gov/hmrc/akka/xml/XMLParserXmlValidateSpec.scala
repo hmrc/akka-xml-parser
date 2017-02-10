@@ -88,7 +88,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-
   it should "fail validation when the specified data does not pass the supplied validation function" in {
     val source = Source.single(ByteString("<xml><body><foo>fail</foo><bar>fail</bar></body></xml>"))
     val error = new ParserValidationError {}
@@ -99,6 +98,22 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r.last.attributes(AkkaXMLParser.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
+    }
+  }
+
+  it should "validate over multiple chunks - size within limits" in {
+    val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>test</foo><bar>t"), ByteString("est</bar></body><fo"),
+      ByteString("oter>footer</fo"),ByteString("oter></xml>")))
+    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(new NoStackTrace {})
+    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
+
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(50)))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "77"), Some(AkkaXMLParser.STREAM_SIZE))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body><footer>footer</footer></xml>"
     }
   }
 
@@ -152,17 +167,23 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
+  it should "00000 return a malformed status if the xml isn" in {
+    1 shouldBe 1
+  }
+
   it should "fail validation over multiple chunks" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>foo</fo"), ByteString("o><bar>test</bar></body></xml>")))
     val error = new ParserValidationError {}
-    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(error)
+    val validatingFunction: String => Option[Throwable] = (string: String) =>
+      if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(error)
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-
       r.last.attributes(AkkaXMLParser.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
     }
   }
+
+
 
   it should "fail validation if no validation tags is found within max allowed validation size" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>"), ByteString("foo</foo><bar>test</bar></body></xml>")))
@@ -247,5 +268,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
       r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
     }
   }
+
 
 }
