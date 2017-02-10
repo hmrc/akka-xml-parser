@@ -101,22 +101,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-  it should "validate over multiple chunks - size within limits" in {
-    val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>test</foo><bar>t"), ByteString("est</bar></body><fo"),
-      ByteString("oter>footer</fo"),ByteString("oter></xml>")))
-    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(new NoStackTrace {})
-    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
-
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(50)))) { r =>
-      r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "77"), Some(AkkaXMLParser.STREAM_SIZE))
-      )
-    }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body><footer>footer</footer></xml>"
-    }
-  }
-
   it should "validate over multiple chunks" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>test</fo"), ByteString("o><bar>test</bar></body></xml>")))
     val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(new NoStackTrace {})
@@ -132,7 +116,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-  it should "validate over multiple chunks where start tag is also spit in chunks" in {
+  it should "validate over multiple chunks where start tag is also spit in chunks - message size check" in {
     val source = Source(List(ByteString("<xml><body>"), ByteString("<fo"), ByteString("123"),
       ByteString("o>test</fo123o><bar>test</bar></bo"), ByteString("dy></xml>")))
     val validatingFunction: String => Option[Throwable] = (string: String) =>
@@ -167,9 +151,6 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-  it should "00000 return a malformed status if the xml isn" in {
-    1 shouldBe 1
-  }
 
   it should "fail validation over multiple chunks" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>foo</fo"), ByteString("o><bar>test</bar></body></xml>")))
@@ -179,11 +160,10 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      println(r)
       r.last.attributes(AkkaXMLParser.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
     }
   }
-
-
 
   it should "fail validation if no validation tags is found within max allowed validation size" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>"), ByteString("foo</foo><bar>test</bar></body></xml>")))
@@ -268,6 +248,22 @@ class XMLParserXmlValidateSpec extends FlatSpec
       r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
     }
   }
+  it should "validate over multiple chunks - size within limits" in {
+    val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>test</foo><bar>t"), ByteString("est</bar></body><fo"),
+      ByteString("oter>footer</fo"), ByteString("oter></xml>")))
+    val validatingFunction: String => Option[Throwable] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>")
+      None
+    else Some(new NoStackTrace {})
+    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(50)))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "77"), Some(AkkaXMLParser.STREAM_SIZE))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body><footer>footer</footer></xml>"
+    }
+  }
 
 }
