@@ -38,7 +38,7 @@ class XMLParser(instructions: Set[XMLInstruction]) {
   def parse(source: Source[ByteString, NotUsed])(implicit mat: Materializer): Source[ParserData, NotUsed] = {
     val initialData = ParserData(ByteString.empty, instructions)
 
-    source.scan(initialData) { (_, next) =>
+    source.map { next =>
       //println("input >>> " + next.utf8String)
       parser.getInputFeeder.feedInput(next.toByteBuffer)
       processChunk(instructions)
