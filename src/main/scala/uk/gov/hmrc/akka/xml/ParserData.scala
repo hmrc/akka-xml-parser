@@ -21,4 +21,8 @@ import akka.util.ByteString
 /**
   * Created by william on 18/02/17.
   */
-case class ParserData(data: ByteString, instructions: Set[XMLInstruction])
+case class ParserData(
+                       data: ByteString,
+                       instructions: Set[XMLInstruction],
+                       elements: Set[XMLElement] = Set.empty
+                     )

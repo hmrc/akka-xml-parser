@@ -39,15 +39,15 @@ class XMLParser(instructions: Set[XMLInstruction]) {
     val initialData = ParserData(ByteString.empty, instructions)
 
     source.scan(initialData) { (_, next) =>
-      println("input >>> " + next.utf8String)
+      //println("input >>> " + next.utf8String)
       parser.getInputFeeder.feedInput(next.toByteBuffer)
-      processChunk()
+      processChunk(instructions)
       initialData.copy(next)
     }
   }
 
   @tailrec
-  private def processChunk(): Unit = {
+  private def processChunk(instructions: Set[XMLInstruction]): Unit = {
     if(parser.hasNext) {
       val event = parser.next()
 
@@ -56,15 +56,20 @@ class XMLParser(instructions: Set[XMLInstruction]) {
           println("parser >>> Incomplete event")
         case XMLStreamConstants.START_ELEMENT =>
           println("parser >>> Start element")
-          processChunk()
+          instructions.foreach {
+            case XMLExtract(_, _) => println(parser.getLocalName)
+            case _ => ()
+          }
+          processChunk(instructions.tail)
         case XMLStreamConstants.END_ELEMENT =>
           println("parser >>> End element")
-          processChunk()
+          processChunk(instructions)
         case XMLStreamConstants.CHARACTERS =>
           println("parser >>> Characters")
-          processChunk()
+          println(parser.getText())
+          processChunk(instructions)
         case _ =>
-          processChunk()
+          processChunk(instructions)
       }
     }
   }
