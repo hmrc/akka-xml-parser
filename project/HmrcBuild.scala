@@ -17,16 +17,11 @@
 import sbt._
 import sbt.Keys._
 import scoverage.ScoverageKeys
-import uk.gov.hmrc.PublishingSettings._
-import uk.gov.hmrc.SbtAutoBuildPlugin
 import uk.gov.hmrc.versioning.SbtGitVersioning
 
 object HmrcBuild extends Build {
 
   import uk.gov.hmrc._
-  import DefaultBuildSettings._
-  import uk.gov.hmrc.{SbtBuildInfo, ShellPrompt}
-  import uk.gov.hmrc.PublishingSettings._
 
   val appName = "akka-xml-parser"
 
@@ -44,7 +39,6 @@ object HmrcBuild extends Build {
     )
 
   lazy val scoverageSettings = {
-    import scoverage.ScoverageSbtPlugin._
     Seq(
       // Semicolon-separated list of regexs matching classes to exclude
       ScoverageKeys.coverageExcludedPackages := "<empty>;.*BuildInfo*.",
@@ -58,12 +52,12 @@ object HmrcBuild extends Build {
 
 private object AppDependencies {
 
-  import play.sbt.PlayImport._
   import play.core.PlayVersion
 
+  val akkaVersion = "2.4.17"
+
   val compile = Seq(
-    "com.typesafe.play" %% "play" % PlayVersion.current,
-    ws,
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "com.fasterxml" % "aalto-xml" % "1.0.0"
   )
 
@@ -73,17 +67,17 @@ private object AppDependencies {
   }
 
   object Test {
-    def apply() = new TestDependencies {
+    def apply(): Seq[ModuleID] = new TestDependencies {
       override lazy val test = Seq(
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
         "org.scalatest" %% "scalatest" % "2.2.4" % scope,
         "org.pegdown" % "pegdown" % "1.5.0" % scope,
         "org.mockito" % "mockito-core" % "1.9.0",
-        "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.14"
+        "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion
 
       )
     }.test
   }
 
-  def apply() = compile ++ Test()
+  def apply(): Seq[ModuleID] = compile ++ Test()
 }
