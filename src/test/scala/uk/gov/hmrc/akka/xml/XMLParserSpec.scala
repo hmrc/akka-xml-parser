@@ -50,7 +50,7 @@ class XMLParserSpec extends WordSpec
         )
       )
 
-      val parser = new XMLParser(Set(XMLExtract(Seq("helloworld"))))
+      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
 
       val res: Future[ByteString] = parser.parse(xmlSrc).map(_.data)
         .runFold(ByteString.empty)(_ ++ _)

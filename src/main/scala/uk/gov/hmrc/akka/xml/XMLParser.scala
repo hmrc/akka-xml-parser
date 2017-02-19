@@ -38,40 +38,45 @@ class XMLParser(instructions: Set[XMLInstruction]) {
   def parse(source: Source[ByteString, NotUsed])(implicit mat: Materializer): Source[ParserData, NotUsed] = {
     val initialData = ParserData(ByteString.empty, instructions)
 
-    source.map { next =>
-      //println("input >>> " + next.utf8String)
-      parser.getInputFeeder.feedInput(next.toByteBuffer)
-      processChunk(instructions)
-      initialData.copy(next)
+    source.map { chunk =>
+      parser.getInputFeeder.feedInput(chunk.toByteBuffer)
+      processChunk(chunk, instructions, initialData)
     }
   }
 
   @tailrec
-  private def processChunk(instructions: Set[XMLInstruction]): Unit = {
+  private def processChunk(chunk: ByteString, instructions: Set[XMLInstruction], data: ParserData, xPath: Seq[String] = Seq.empty): ParserData = {
     if(parser.hasNext) {
       val event = parser.next()
 
       event match {
-        case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-          println("parser >>> Incomplete event")
+        case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           println("parser >>> Start element")
-          instructions.foreach {
-            case XMLExtract(_, _) => println(parser.getLocalName)
-            case _ => ()
+          val currentPath: Seq[String] = xPath :+ parser.getLocalName
+          instructions.headOption match {
+            case Some(XMLExtract(`currentPath`, _)) =>
+              println(currentPath)
+              processChunk(chunk,instructions, data, currentPath)
+            case _ => processChunk(chunk, instructions, data, currentPath)
           }
-          processChunk(instructions.tail)
         case XMLStreamConstants.END_ELEMENT =>
           println("parser >>> End element")
-          processChunk(instructions)
+          instructions.headOption match {
+            case Some(XMLExtract(_, _)) =>
+              println(xPath)
+              processChunk(chunk, instructions.tail, data, xPath.dropRight(1))
+            case _ =>
+              processChunk(chunk, instructions, data, xPath)
+          }
         case XMLStreamConstants.CHARACTERS =>
           println("parser >>> Characters")
           println(parser.getText())
-          processChunk(instructions)
+          processChunk(chunk, instructions, data)
         case _ =>
-          processChunk(instructions)
+          processChunk(chunk, instructions, data)
       }
-    }
+    } else data
   }
 
 }
