@@ -18,7 +18,6 @@ package uk.gov.hmrc.akka.xml
 
 import javax.xml.stream.XMLStreamConstants
 
-import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -35,7 +34,7 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
   private lazy val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
   private lazy val parser: AsyncXMLStreamReader[AsyncByteBufferFeeder] = feeder.createAsyncForByteBuffer()
 
-  def parse(source: Source[ByteString, NotUsed])(implicit mat: Materializer): Source[ParserData, NotUsed] = {
+  def parse(source: Source[ByteString, _])(implicit mat: Materializer): Source[ParserData, _] = {
     val initialData = ParserData(ByteString.empty)
 
     source.scan(initialData) { (data, chunk) =>
