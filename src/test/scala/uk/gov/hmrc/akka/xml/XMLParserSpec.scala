@@ -18,7 +18,7 @@ package uk.gov.hmrc.akka.xml
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
@@ -40,7 +40,7 @@ class XMLParserSpec extends WordSpec
 
   "parse" should {
 
-    "return a source which, when run, will produce a ParserData instance" in {
+    "return a source which, when ran into a sink, will produce a ByteString" in {
 
       val xmlSrc = Source(
         List(
@@ -52,11 +52,39 @@ class XMLParserSpec extends WordSpec
 
       val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
 
-      val res: Future[ByteString] = parser.parse(xmlSrc).map(_.data)
-        .runFold(ByteString.empty)(_ ++ _)
+      val sink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
+        .map(_.data)
+        .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
+
+      val res: Future[ByteString] = parser.parse(xmlSrc)
+        .runWith(sink)
 
       whenReady(res) {
         _.utf8String shouldBe "<helloworld>foobar</helloworld>"
+      }
+    }
+
+    "return a source which, when ran into a sink, will produce a Set of the extracted elements" in {
+
+      val xmlSrc = Source(
+        List(
+          ByteString("<hello"), ByteString("world>"),
+          ByteString("foo"), ByteString("bar"),
+          ByteString("</helloworld>")
+        )
+      )
+
+      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
+
+      val sink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
+        .map(_.elements)
+        .toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.right)
+
+      val res: Future[Set[XMLElement]] = parser.parse(xmlSrc)
+        .runWith(sink)
+
+      whenReady(res) {
+        _ shouldBe Set(XMLElement(XPath("helloworld"), value = Some("foobar")))
       }
     }
 

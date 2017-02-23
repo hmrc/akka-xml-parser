@@ -26,7 +26,6 @@ import com.fasterxml.aalto.{AsyncByteBufferFeeder, AsyncXMLInputFactory, AsyncXM
 import com.fasterxml.aalto.stax.InputFactoryImpl
 
 import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 
 /**
   * Created by william on 18/02/17.
@@ -36,14 +35,12 @@ class XMLParser(instructions: Set[XMLInstruction]) {
   private lazy val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
   private lazy val parser: AsyncXMLStreamReader[AsyncByteBufferFeeder] = feeder.createAsyncForByteBuffer()
 
-  private val nodes = ArrayBuffer[String]()
-
   def parse(source: Source[ByteString, NotUsed])(implicit mat: Materializer): Source[ParserData, NotUsed] = {
     val initialData = ParserData(ByteString.empty)
 
-    source.map { chunk =>
+    source.scan(initialData) { (data, chunk) =>
       parser.getInputFeeder.feedInput(chunk.toByteBuffer)
-      processChunk(chunk, instructions, initialData)
+      processChunk(chunk, instructions, data)
     }
   }
 
@@ -56,25 +53,28 @@ class XMLParser(instructions: Set[XMLInstruction]) {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           println("parser >>> Start element")
-          val currentPath: Seq[String] = nodes += parser.getLocalName
-          instructions.headOption match {
-            case Some(XMLExtract(`currentPath`, _)) =>
-              processChunk(chunk,instructions, data)
-            case _ => processChunk(chunk, instructions, data)
-          }
+          val currentPath = data.xPath :+ parser.getLocalName
+          processChunk(chunk, instructions, data.copy(xPath = currentPath))
         case XMLStreamConstants.CHARACTERS =>
           println("parser >>> Characters")
-          println(parser.getText())
-          processChunk(chunk, instructions, data)
+          val chars = data.characters match {
+            case Some(s) => Some(s + parser.getText())
+            case None => Some(parser.getText())
+          }
+          processChunk(chunk, instructions, data.copy(characters = chars))
         case XMLStreamConstants.END_ELEMENT =>
           println("parser >>> End element")
+          val currentPath = data.xPath
           instructions.headOption match {
-            case Some(XMLExtract(`nodes`, _)) =>
-              nodes -= parser.getLocalName
-              // We can drop this instruction since we're done with it
-              processChunk(chunk, instructions.tail, data)
+            case Some(XMLExtract(`currentPath`, _)) =>
+              val chars = data.characters
+              processChunk(chunk, instructions.tail, data.copy(
+                elements = data.elements + XMLElement(currentPath, value = chars),
+                xPath = currentPath.dropRight(1),
+                characters = None
+              ))
             case _ =>
-              processChunk(chunk, instructions, data)
+              processChunk(chunk, instructions.tail, data.copy(xPath = currentPath.dropRight(1)))
           }
         case _ =>
           processChunk(chunk, instructions, data)

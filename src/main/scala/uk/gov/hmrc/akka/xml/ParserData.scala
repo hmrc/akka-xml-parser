@@ -23,5 +23,7 @@ import akka.util.ByteString
   */
 case class ParserData(
                        data: ByteString,
-                       elements: Set[XMLElement] = Set.empty
+                       elements: Set[XMLElement] = Set.empty,
+                       xPath: Seq[String] = Seq.empty,
+                       characters: Option[String] = None
                      )
