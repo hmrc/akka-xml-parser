@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 /**
   * Created by william on 18/02/17.
   */
-class XMLParser(instructions: Set[XMLInstruction]) {
+class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
 
   private lazy val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
   private lazy val parser: AsyncXMLStreamReader[AsyncByteBufferFeeder] = feeder.createAsyncForByteBuffer()
@@ -54,7 +54,16 @@ class XMLParser(instructions: Set[XMLInstruction]) {
         case XMLStreamConstants.START_ELEMENT =>
           println("parser >>> Start element")
           val currentPath = data.xPath :+ parser.getLocalName
-          processChunk(chunk, instructions, data.copy(xPath = currentPath))
+
+          instructions.headOption match {
+            case Some(XMLExtract(`currentPath`, attrs)) =>
+              val matchedAttrs = getPredicateMatch(parser, attrs)
+              processChunk(chunk, instructions, data.copy(
+                xPath = currentPath,
+                attributes = matchedAttrs
+              ))
+            case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
+          }
         case XMLStreamConstants.CHARACTERS =>
           println("parser >>> Characters")
           val chars = data.characters match {
@@ -62,6 +71,7 @@ class XMLParser(instructions: Set[XMLInstruction]) {
             case None => Some(parser.getText())
           }
           processChunk(chunk, instructions, data.copy(characters = chars))
+
         case XMLStreamConstants.END_ELEMENT =>
           println("parser >>> End element")
           val currentPath = data.xPath
@@ -69,9 +79,10 @@ class XMLParser(instructions: Set[XMLInstruction]) {
             case Some(XMLExtract(`currentPath`, _)) =>
               val chars = data.characters
               processChunk(chunk, instructions.tail, data.copy(
-                elements = data.elements + XMLElement(currentPath, value = chars),
+                elements = data.elements + XMLElement(currentPath, data.attributes, chars),
                 xPath = currentPath.dropRight(1),
-                characters = None
+                characters = None,
+                attributes = Map.empty
               ))
             case _ =>
               processChunk(chunk, instructions.tail, data.copy(xPath = currentPath.dropRight(1)))

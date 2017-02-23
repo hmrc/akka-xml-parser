@@ -25,5 +25,6 @@ case class ParserData(
                        data: ByteString,
                        elements: Set[XMLElement] = Set.empty,
                        xPath: Seq[String] = Seq.empty,
-                       characters: Option[String] = None
+                       characters: Option[String] = None,
+                       attributes: Map[String, String] = Map.empty
                      )

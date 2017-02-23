@@ -51,29 +51,30 @@ trait StreamHelper {
     completedElements
   }
 
-  def getPredicateMatch(parser: AsyncXMLStreamReader[AsyncByteArrayFeeder], predicates: Map[String, String]): Map[String, String] = {
+  def getPredicateMatch(parser: AsyncXMLStreamReader[_], predicates: Map[String, String]): Map[String, String] = {
     val XMLNS = "xmlns"
-    val collection = scala.collection.mutable.Map[String, String]()
 
-    if (parser.getNamespaceCount > 0 && predicates.keySet(XMLNS)) collection.+=(XMLNS -> parser.getNamespaceURI(0))
-    (0 until parser.getNamespaceCount).map { i =>
+    val xmlnsPrefix = if (parser.getNamespaceCount > 0 && predicates.keySet(XMLNS)) {
+      Map(XMLNS -> parser.getNamespaceURI(0))
+    } else Map.empty
+
+    val namespaces = (0 until parser.getNamespaceCount).foldLeft(Map.empty[String, String]) { (m, i) =>
       val ns = if (parser.getNamespacePrefix(i).length == 0) XMLNS else XMLNS + ":" + parser.getNamespacePrefix(i)
       if (predicates.keySet(ns)) {
-        collection.+=(ns -> parser.getNamespaceURI(i))
-      }
+        m ++ Map(ns -> parser.getNamespaceURI(i))
+      } else m
     }
 
-    (0 until parser.getAttributeCount).map(i =>
-
+    val attributes = (0 until parser.getAttributeCount).foldLeft(Map.empty[String, String]) { (m, i) =>
       if (predicates.isEmpty) {
-        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
+        m ++ Map(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
       } else if (predicates.keySet(parser.getAttributeLocalName(i)) || predicates.keySet(
         parser.getAttributePrefix(i) + ":" + parser.getAttributeLocalName(i))) {
-        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
-      }
-    )
-    collection
-  }.toMap
+        m ++ Map(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
+      } else m
+    }
+    xmlnsPrefix ++ namespaces ++ attributes
+  }
 
   def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String])
                        (implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {

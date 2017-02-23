@@ -68,7 +68,7 @@ class XMLParserSpec extends WordSpec
 
       val xmlSrc = Source(
         List(
-          ByteString("<hello"), ByteString("world>"),
+          ByteString("<hello"), ByteString("""world foo="bar">"""),
           ByteString("foo"), ByteString("bar"),
           ByteString("</helloworld>")
         )
@@ -84,7 +84,7 @@ class XMLParserSpec extends WordSpec
         .runWith(sink)
 
       whenReady(res) {
-        _ shouldBe Set(XMLElement(XPath("helloworld"), value = Some("foobar")))
+        _ shouldBe Set(XMLElement(XPath("helloworld"), Map("foo" -> "bar"), value = Some("foobar")))
       }
     }
 
