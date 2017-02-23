@@ -52,7 +52,6 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
       event match {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
-          println("parser >>> Start element")
           val currentPath = data.xPath :+ parser.getLocalName
 
           instructions.headOption match {
@@ -65,7 +64,6 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
             case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
           }
         case XMLStreamConstants.CHARACTERS =>
-          println("parser >>> Characters")
           val chars = data.characters match {
             case Some(s) => Some(s + parser.getText())
             case None => Some(parser.getText())
@@ -73,7 +71,6 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
           processChunk(chunk, instructions, data.copy(characters = chars))
 
         case XMLStreamConstants.END_ELEMENT =>
-          println("parser >>> End element")
           val currentPath = data.xPath
           instructions.headOption match {
             case Some(XMLExtract(`currentPath`, _)) =>

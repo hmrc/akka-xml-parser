@@ -68,13 +68,18 @@ class XMLParserSpec extends WordSpec
 
       val xmlSrc = Source(
         List(
+          ByteString("<root>"),
           ByteString("<hello"), ByteString("""world foo="bar">"""),
           ByteString("foo"), ByteString("bar"),
-          ByteString("</helloworld>")
+          ByteString("</helloworld>"),
+          ByteString("<hello"), ByteString("""world foo="bar">"""),
+          ByteString("foo"), ByteString("bar"),
+          ByteString("</helloworld>"),
+          ByteString("</root>")
         )
       )
 
-      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
+      val parser = new XMLParser(Set(XMLExtract(XPath("root/helloworld"))))
 
       val sink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
         .map(_.elements)
@@ -84,7 +89,7 @@ class XMLParserSpec extends WordSpec
         .runWith(sink)
 
       whenReady(res) {
-        _ shouldBe Set(XMLElement(XPath("helloworld"), Map("foo" -> "bar"), value = Some("foobar")))
+        _ shouldBe Set(XMLElement(XPath("root/helloworld"), Map("foo" -> "bar"), value = Some("foobar")))
       }
     }
 
