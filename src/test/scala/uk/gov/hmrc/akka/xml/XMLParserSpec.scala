@@ -93,6 +93,31 @@ class XMLParserSpec extends WordSpec
       }
     }
 
+    "return a source which, when ran into a sink, will produce the total size of the Source data" in {
+
+      val xmlSrc = Source(
+        List(
+          ByteString("<root>"),
+          ByteString("</root>")
+        )
+      )
+
+      val EXPECTED_SIZE = 13
+
+      val parser = new XMLParser(Set(XMLExtract(XPath("root/helloworld"))))
+
+      val sink: Sink[ParserData, Future[Int]] = Flow[ParserData]
+        .map(_.size)
+        .toMat(Sink.fold(0)(_ + _))(Keep.right)
+
+      val res: Future[Int] = parser.parse(xmlSrc)
+        .runWith(sink)
+
+      whenReady(res) {
+        _ shouldBe EXPECTED_SIZE
+      }
+    }
+
   }
 
 }

@@ -39,7 +39,7 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
 
     source.scan(initialData) { (data, chunk) =>
       parser.getInputFeeder.feedInput(chunk.toByteBuffer)
-      processChunk(chunk, instructions, data)
+      processChunk(chunk, instructions, data.copy(size = chunk.length))
     }
   }
 
