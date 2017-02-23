@@ -81,7 +81,7 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
                 attributes = Map.empty
               ))
             case _ =>
-              processChunk(chunk, instructions.tail, data.copy(xPath = currentPath.dropRight(1)))
+              processChunk(chunk, instructions, data.copy(xPath = currentPath.dropRight(1)))
           }
         case _ =>
           processChunk(chunk, instructions, data)
