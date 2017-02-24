@@ -45,6 +45,7 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
 
   @tailrec
   private def processChunk(chunk: ByteString, instructions: Set[XMLInstruction], data: ParserData): ParserData = {
+    println("parser >>> " + data.xPath)
     if(parser.hasNext) {
       val event = parser.next()
 
@@ -52,7 +53,6 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           val currentPath = data.xPath :+ parser.getLocalName
-
           instructions.headOption match {
             case Some(XMLExtract(`currentPath`, attrs)) =>
               val matchedAttrs = getPredicateMatch(parser, attrs)
@@ -63,11 +63,17 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
             case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
           }
         case XMLStreamConstants.CHARACTERS =>
-          val chars = data.characters match {
-            case Some(s) => Some(s + parser.getText())
-            case None => Some(parser.getText())
+          val currentPath = data.xPath
+          val text = parser.getText().trim
+          instructions.headOption match {
+            case Some(XMLExtract(`currentPath`, _)) =>
+              val chars = data.characters match {
+                case Some(s) => if(text.nonEmpty) Some(s + text) else Some(s)
+                case None => if(text.nonEmpty) Some(text) else None
+              }
+              processChunk(chunk, instructions, data.copy(characters = chars))
+            case _ => processChunk(chunk, instructions, data)
           }
-          processChunk(chunk, instructions, data.copy(characters = chars))
 
         case XMLStreamConstants.END_ELEMENT =>
           val currentPath = data.xPath

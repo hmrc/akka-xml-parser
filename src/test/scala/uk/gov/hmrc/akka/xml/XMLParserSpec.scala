@@ -65,10 +65,9 @@ class XMLParserSpec extends WordSpec
     }
 
     "return a source which, when ran into a sink, will produce a Set of the extracted elements" in {
-
       val xmlSrc = Source(
         List(
-          ByteString("<root>"),
+          ByteString("""<root xmlns="http://www.govtalk.gov.uk/CM/envelope">"""),
           ByteString("<hello"), ByteString("""world foo="bar">"""),
           ByteString("foo"), ByteString("bar"),
           ByteString("</helloworld>"),
@@ -79,7 +78,7 @@ class XMLParserSpec extends WordSpec
         )
       )
 
-      val parser = new XMLParser(Set(XMLExtract(XPath("root/helloworld"))))
+      val parser = new XMLParser(Set(XMLExtract(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"))))
 
       val sink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
         .map(_.elements)
@@ -89,7 +88,7 @@ class XMLParserSpec extends WordSpec
         .runWith(sink)
 
       whenReady(res) {
-        _ shouldBe Set(XMLElement(XPath("root/helloworld"), Map("foo" -> "bar"), value = Some("foobar")))
+        _ shouldBe Set(XMLElement(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), value = None))
       }
     }
 
