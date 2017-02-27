@@ -35,38 +35,43 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
   private lazy val parser: AsyncXMLStreamReader[AsyncByteBufferFeeder] = feeder.createAsyncForByteBuffer()
 
   def parse(source: Source[ByteString, _])(implicit mat: Materializer): Source[ParserData, _] = {
-    val initialData = ParserData(ByteString.empty)
+    val initialData = ParserData(ByteString.empty, instructions)
 
     source.scan(initialData) { (data, chunk) =>
       parser.getInputFeeder.feedInput(chunk.toByteBuffer)
-      processChunk(chunk, instructions, data.copy(size = chunk.length))
+      processChunk(chunk, data.instructions, data.copy(size = chunk.length))
     }
   }
 
   @tailrec
   private def processChunk(chunk: ByteString, instructions: Set[XMLInstruction], data: ParserData): ParserData = {
-    println("parser >>> " + data.xPath)
     if(parser.hasNext) {
       val event = parser.next()
-
       event match {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           val currentPath = data.xPath :+ parser.getLocalName
-          instructions.headOption match {
+          val instr = instructions.collectFirst {
+            case i@XMLExtract(`currentPath`, _) => i
+          }
+          instr match {
             case Some(XMLExtract(`currentPath`, attrs)) =>
               val matchedAttrs = getPredicateMatch(parser, attrs)
+              val e = XMLElement(currentPath, attributes = matchedAttrs)
               processChunk(chunk, instructions, data.copy(
                 xPath = currentPath,
-                attributes = matchedAttrs
+                elements = data.elements + e
               ))
             case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
           }
         case XMLStreamConstants.CHARACTERS =>
           val currentPath = data.xPath
-          val text = parser.getText().trim
-          instructions.headOption match {
+          val instr = instructions.collectFirst {
+            case i@XMLExtract(`currentPath`, _) => i
+          }
+          instr match {
             case Some(XMLExtract(`currentPath`, _)) =>
+              val text = parser.getText().trim
               val chars = data.characters match {
                 case Some(s) => if(text.nonEmpty) Some(s + text) else Some(s)
                 case None => if(text.nonEmpty) Some(text) else None
@@ -77,14 +82,19 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
 
         case XMLStreamConstants.END_ELEMENT =>
           val currentPath = data.xPath
-          instructions.headOption match {
-            case Some(XMLExtract(`currentPath`, _)) =>
+          val instr = instructions.collectFirst {
+            case i@XMLExtract(`currentPath`, _) => i
+          }
+
+          instr match {
+            case Some(e@XMLExtract(`currentPath`, attrs)) =>
               val chars = data.characters
-              processChunk(chunk, instructions.tail, data.copy(
-                elements = data.elements + XMLElement(currentPath, data.attributes, chars),
+              val filtered = instructions.filter(_ != e)
+              processChunk(chunk, filtered, data.copy(
+                instructions = filtered,
+                elements = data.updateElementByXpath(currentPath, chars),
                 xPath = currentPath.dropRight(1),
-                characters = None,
-                attributes = Map.empty
+                characters = None
               ))
             case _ =>
               processChunk(chunk, instructions, data.copy(xPath = currentPath.dropRight(1)))

@@ -23,9 +23,26 @@ import akka.util.ByteString
   */
 case class ParserData(
                        data: ByteString,
+                       instructions: Set[XMLInstruction] = Set.empty,
                        elements: Set[XMLElement] = Set.empty,
                        xPath: Seq[String] = Seq.empty,
                        characters: Option[String] = None,
-                       attributes: Map[String, String] = Map.empty,
                        size: Int = 0
                      )
+{
+
+  def upsertElement(element: XMLElement) = {
+    if(elements(element)) updateElementByXpath(element.xPath, element.value)
+    else Set[XMLElement](element)
+  }
+
+  def updateElementByXpath(xPath: Seq[String], characters: Option[String]): Set[XMLElement] = {
+    println("Old elements >>> " + elements)
+    val newElements = elements.map { e =>
+      if(e.xPath == xPath) e.copy(value = characters) else e
+    }
+    println("New elements >>> " + newElements)
+    newElements
+  }
+
+}

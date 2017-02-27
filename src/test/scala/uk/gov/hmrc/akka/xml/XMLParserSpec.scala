@@ -40,31 +40,32 @@ class XMLParserSpec extends WordSpec
 
   "parse" should {
 
-    "return a source which, when ran into a sink, will produce a ByteString" in {
-
-      val xmlSrc = Source(
-        List(
-          ByteString("<hello"), ByteString("world>"),
-          ByteString("foo"), ByteString("bar"),
-          ByteString("</helloworld>")
-        )
-      )
-
-      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
-
-      val sink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
-        .map(_.data)
-        .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
-
-      val res: Future[ByteString] = parser.parse(xmlSrc)
-        .runWith(sink)
-
-      whenReady(res) {
-        _.utf8String shouldBe "<helloworld>foobar</helloworld>"
-      }
-    }
+//    "return a source which, when ran into a sink, will produce a ByteString" in {
+//      println(">>>>> test 1 <<<<<<")
+//      val xmlSrc = Source(
+//        List(
+//          ByteString("<hello"), ByteString("world>"),
+//          ByteString("foo"), ByteString("bar"),
+//          ByteString("</helloworld>")
+//        )
+//      )
+//
+//      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
+//
+//      val sink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
+//        .map(_.data)
+//        .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
+//
+//      val res: Future[ByteString] = parser.parse(xmlSrc)
+//        .runWith(sink)
+//
+//      whenReady(res) {
+//        _.utf8String shouldBe "<helloworld>foobar</helloworld>"
+//      }
+//    }
 
     "return a source which, when ran into a sink, will produce a Set of the extracted elements" in {
+      println(">>>>> test 2 <<<<<<")
       val xmlSrc = Source(
         List(
           ByteString("""<root xmlns="http://www.govtalk.gov.uk/CM/envelope">"""),
@@ -78,7 +79,12 @@ class XMLParserSpec extends WordSpec
         )
       )
 
-      val parser = new XMLParser(Set(XMLExtract(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"))))
+      val instructions = Set[XMLInstruction](
+        XMLExtract(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")),
+        XMLExtract(XPath("root/helloworld"), Map("foo" -> "bar"))
+      )
+
+      val parser = new XMLParser(instructions)
 
       val sink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
         .map(_.elements)
@@ -88,34 +94,37 @@ class XMLParserSpec extends WordSpec
         .runWith(sink)
 
       whenReady(res) {
-        _ shouldBe Set(XMLElement(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), value = None))
-      }
-    }
-
-    "return a source which, when ran into a sink, will produce the total size of the Source data" in {
-
-      val xmlSrc = Source(
-        List(
-          ByteString("<root>"),
-          ByteString("</root>")
+        _ shouldBe Set(
+          XMLElement(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), value = None),
+          XMLElement(XPath("root/helloworld"), Map("foo" -> "bar"),  value = Some("foobar"))
         )
-      )
-
-      val EXPECTED_SIZE = 13
-
-      val parser = new XMLParser(Set(XMLExtract(XPath("root/helloworld"))))
-
-      val sink: Sink[ParserData, Future[Int]] = Flow[ParserData]
-        .map(_.size)
-        .toMat(Sink.fold(0)(_ + _))(Keep.right)
-
-      val res: Future[Int] = parser.parse(xmlSrc)
-        .runWith(sink)
-
-      whenReady(res) {
-        _ shouldBe EXPECTED_SIZE
       }
     }
+
+//    "return a source which, when ran into a sink, will produce the total size of the Source data" in {
+//      println(">>>>> test 3 <<<<<<")
+//      val xmlSrc = Source(
+//        List(
+//          ByteString("<root>"),
+//          ByteString("</root>")
+//        )
+//      )
+//
+//      val EXPECTED_SIZE = 13
+//
+//      val parser = new XMLParser(Set(XMLExtract(XPath("root"))))
+//
+//      val sink: Sink[ParserData, Future[Int]] = Flow[ParserData]
+//        .map(_.size)
+//        .toMat(Sink.fold(0)(_ + _))(Keep.right)
+//
+//      val res: Future[Int] = parser.parse(xmlSrc)
+//        .runWith(sink)
+//
+//      whenReady(res) {
+//        _ shouldBe EXPECTED_SIZE
+//      }
+//    }
 
   }
 
