@@ -29,20 +29,3 @@ case class ParserData(
                        characters: Option[String] = None,
                        size: Int = 0
                      )
-{
-
-  def upsertElement(element: XMLElement) = {
-    if(elements(element)) updateElementByXpath(element.xPath, element.value)
-    else Set[XMLElement](element)
-  }
-
-  def updateElementByXpath(xPath: Seq[String], characters: Option[String]): Set[XMLElement] = {
-    println("Old elements >>> " + elements)
-    val newElements = elements.map { e =>
-      if(e.xPath == xPath) e.copy(value = characters) else e
-    }
-    println("New elements >>> " + newElements)
-    newElements
-  }
-
-}

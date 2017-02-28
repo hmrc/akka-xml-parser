@@ -51,19 +51,7 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           val currentPath = data.xPath :+ parser.getLocalName
-          val instr = instructions.collectFirst {
-            case i@XMLExtract(`currentPath`, _) => i
-          }
-          instr match {
-            case Some(XMLExtract(`currentPath`, attrs)) =>
-              val matchedAttrs = getPredicateMatch(parser, attrs)
-              val e = XMLElement(currentPath, attributes = matchedAttrs)
-              processChunk(chunk, instructions, data.copy(
-                xPath = currentPath,
-                elements = data.elements + e
-              ))
-            case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
-          }
+          processChunk(chunk, instructions, data.copy(xPath = currentPath))
         case XMLStreamConstants.CHARACTERS =>
           val currentPath = data.xPath
           val instr = instructions.collectFirst {
@@ -79,20 +67,18 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
               processChunk(chunk, instructions, data.copy(characters = chars))
             case _ => processChunk(chunk, instructions, data)
           }
-
         case XMLStreamConstants.END_ELEMENT =>
           val currentPath = data.xPath
           val instr = instructions.collectFirst {
             case i@XMLExtract(`currentPath`, _) => i
           }
-
           instr match {
-            case Some(e@XMLExtract(`currentPath`, attrs)) =>
+            case Some(e@XMLExtract(`currentPath`, _)) =>
               val chars = data.characters
               val filtered = instructions.filter(_ != e)
               processChunk(chunk, filtered, data.copy(
                 instructions = filtered,
-                elements = data.updateElementByXpath(currentPath, chars),
+                elements = data.elements + XMLElement(currentPath, value = chars),
                 xPath = currentPath.dropRight(1),
                 characters = None
               ))
