@@ -93,8 +93,8 @@ class XMLParserSpec extends WordSpec
 
       whenReady(res) {
         _ shouldBe Set(
-          XMLElement(XPath("root")),
-          XMLElement(XPath("root/helloworld"), value = Some("foobar"))
+          XMLElement(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")),
+          XMLElement(XPath("root/helloworld"), Map("foo" -> "bar"), value = Some("foobar"))
         )
       }
     }

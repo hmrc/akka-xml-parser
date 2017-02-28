@@ -51,7 +51,21 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
         case AsyncXMLStreamReader.EVENT_INCOMPLETE => data.copy(chunk)
         case XMLStreamConstants.START_ELEMENT =>
           val currentPath = data.xPath :+ parser.getLocalName
-          processChunk(chunk, instructions, data.copy(xPath = currentPath))
+          val instr = instructions.collectFirst {
+            case i@XMLExtract(`currentPath`, _) => i
+          }
+          instr match {
+            case Some(XMLExtract(`currentPath`, attrs)) =>
+              val matchedAttrs = data.attributes ++ getPredicateMatch(parser, attrs)
+              processChunk(chunk, instructions, data.copy(
+                xPath = currentPath,
+                attributes = matchedAttrs
+              ))
+            case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
+          }
+
+
+          //processChunk(chunk, instructions, data.copy(xPath = currentPath))
         case XMLStreamConstants.CHARACTERS =>
           val currentPath = data.xPath
           val instr = instructions.collectFirst {
@@ -76,9 +90,10 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
             case Some(e@XMLExtract(`currentPath`, _)) =>
               val chars = data.characters
               val filtered = instructions.filter(_ != e)
+              val matched = findMatchingAttributes(e, data)
               processChunk(chunk, filtered, data.copy(
                 instructions = filtered,
-                elements = data.elements + XMLElement(currentPath, value = chars),
+                elements = data.elements + XMLElement(currentPath, matched, chars),
                 xPath = currentPath.dropRight(1),
                 characters = None
               ))
@@ -89,6 +104,12 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
           processChunk(chunk, instructions, data)
       }
     } else data
+  }
+
+  private def findMatchingAttributes(instruction: XMLExtract, data: ParserData) = {
+    data.attributes.flatMap { v =>
+      instruction.attributes.filterKeys(_ == v._1)
+    }
   }
 
 }
