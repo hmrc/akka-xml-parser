@@ -110,7 +110,7 @@ class XMLParserXmlUpdateSpec
     }
   }
 
-  it should "update and delete a block of xml element - data is chunked" in {
+  it should "update and delete a block of xml element - instruction tag is chunked" in {
     val source = Source(List(ByteString("<xml><header><fo"),
       ByteString("o><taz>tar</ta"),
       ByteString("z></foo></he"),
@@ -120,7 +120,50 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
       r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+    }
+  }
+
+  it should "update and delete a block of xml element - instruction tag is not chunked" in {
+    val source = Source(List(ByteString("<xml><header><foo><ta"),
+      ByteString("z>tar</taz></foo></he"),
+      ByteString("ader></xml>")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
+    )
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
+      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+    }
+  }
+
+  it should "update and delete a block of xml element - instruction tag is first tag after chunking" in {
+    val source = Source(List(ByteString("<xml><head"),
+      ByteString("er><foo><taz>tar</taz></foo></he"),
+      ByteString("ader></xml>")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
+    )
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
+      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+    }
+  }
+
+  it should "update and delete a block of xml element - instruction tag is not the first tag after chunking" in {
+    val source = Source(List(ByteString("<xml><header><myf"),
+      ByteString("oo>myfoo</myfoo><foo><taz>tar</taz></foo></he"),
+      ByteString("ader></xml>")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("<bar>bar</bar>"), isUpsert = true)
+    )
+
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
+      r.utf8String shouldBe "<xml><header><myfoo>myfoo</myfoo><foo><bar>bar</bar></foo></header></xml>"
     }
   }
 
@@ -151,37 +194,7 @@ class XMLParserXmlUpdateSpec
       r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
-  //TODO: Check if we need to program for this scenario with Rob
 
-  //  it should "extract the inserted value when it is updated" in {
-  //    val source = Source.single(ByteString("<xml><body><foo>foo</foo></body></xml>"))
-  //    val instructions = Set[XMLInstruction](
-  //      XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
-  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-  //    }
-  //  }
-  //
-  //
-  //  it should "extract the inserted value when an empty tag is updated" in {
-  //    val source = Source.single(ByteString("<xml><body><foo></foo></body></xml>"))
-  //    val instructions = Set[XMLInstruction](XMLUpdate(Seq("xml", "body", "foo"), Some("bar")))
-  //
-  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-  //    }
-  //  }
-  //
-  //  it should "extract the inserted value when a self closing tag is updated" in {
-  //    val source = Source.single(ByteString("<xml><body><foo/></body></xml>"))
-  //    val instructions = Set[XMLInstruction](
-  //      XMLUpdate(Seq("xml", "body", "foo"), Some("bar"))
-  //    )
-  //
-  //    whenReady(source.runWith(parseToXMLElements(instructions))) { r =>
-  //      r shouldBe Set(XMLElement(Seq("xml", "body", "foo"), Map.empty, Some("bar")))
-  //    }
-  //  }
 
   it should "update an existing element with new attributes when they are specified" in {
     val source = Source.single(ByteString("<xml><bar>bar</bar></xml>"))
@@ -289,10 +302,10 @@ class XMLParserXmlUpdateSpec
     }
   }
 
-  it should "update an elements with namespaces and input in chunks" in {
+  it should "update an element with namespaces and input in chunks" in {
     val source = Source(List(
-      ByteString("""<ns:xml xml"""),
-      ByteString("""ns:ns="test"><ns:bar/></ns:xml>""")))
+      ByteString("""<ns:xml xmlns:ns="test"><ns"""),
+      ByteString(""":bar/></ns:xml>""")))
     val instructions = Set[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
     val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -308,6 +321,67 @@ class XMLParserXmlUpdateSpec
     val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
+    }
+  }
+
+
+  it should "test" in {
+    val source = Source(List(
+      ByteString(
+        """<?xml version='1.0' encoding='UTF-8'?>
+                   <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+                   <EnvelopeVersion>2.0</EnvelopeVersion>
+                   <Header>
+                   <MessageDetails>
+                   <Class>HMRC-PAYE-RTI-EAS-TIL</Class>
+                   <Qualifier>error</Qualifier>
+                   <Function>submit</Function>
+         <CorrelationID>4FA7B03FA8214BC59801008DF5378C92</Cor"""),
+      ByteString(
+        """relationID>
+                   <ResponseEndPoint></ResponseEndPoint>
+                   <Transformation>XML</Transformation>
+                   <GatewayTimestamp/>
+                   </MessageDetails>
+                   <SenderDetails></SenderDetails>
+                   </Header>
+                   <GovTalkDetails>
+                   <Keys></Keys>
+                   <GovTalkErrors>
+                   <Error>
+                   <RaisedBy>Department</RaisedBy>
+                   <Number>3001</Number>
+                   <Type>business</Type>
+                   <Text>The submission of this document has failed due to departmental specific business logic in the Body tag.</Text>
+                   </Error>
+                   </GovTalkErrors>
+                   </GovTalkDetails>
+                   <Body>
+                   <ErrorResponse SchemaVersion="2.0" xmlns="http://www.govtalk.gov.uk/CM/errorresponse">
+                   <Application>
+                   <MessageCount>1</MessageCount>
+                   </Application>
+                   <Error>
+                   <RaisedBy>ChRIS</RaisedBy>
+                   <Number>7811</Number>
+                   <Type>business</Type>
+                   <Text>This submission cannot be accepted as alignment has commenced or successfully completed1111</Text>
+                   <Location></Location>
+                   </Error>
+                   </ErrorResponse>
+                   </Body>
+                   </GovTalkMessage>""")))
+    val instructions = Set[XMLInstruction](
+      XMLUpdate(XPath("GovTalkMessage/Header/MessageDetails/GatewayTimestamp"), Some("2017-02-27"), isUpsert = true),
+      XMLUpdate(XPath("GovTalkMessage/Header/MessageDetails/ResponseEndPoint"), Some("www.google.com"), isUpsert = true),
+      XMLUpdate(XPath("GovTalkMessage/GovTalkDetails/GovTalkErrors/Error/RaisedBy"), Some("Department"), isUpsert = true),
+      XMLUpdate(XPath("GovTalkMessage/GovTalkDetails/GovTalkErrors/Error/Text"), Some("The submission of this document has " +
+        "failed due to departmental specific business logic in the Body tag."), isUpsert = true)
+    )
+    val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
+    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+      println(r.utf8String)
+      //r.utf8String shouldBe expected
     }
   }
 }
