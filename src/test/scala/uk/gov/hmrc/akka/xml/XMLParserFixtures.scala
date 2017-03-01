@@ -33,18 +33,27 @@ trait XMLParserFixtures {
     implicit val system = ActorSystem("XMLParser")
     implicit val mat = ActorMaterializer()
 
-    def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None, validationMaxSize: Option[Int] = None) = Flow[ByteString]
-      .via(AkkaXMLParser.parser(instructions, maxSize, validationMaxSize, 10))
+    //    def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None, validationMaxSize: Option[Int] = None) = Flow[ByteString]
+    //      .via(AkkaXMLParser.parser(instructions, maxSize, validationMaxSize, 10))
+    //      .via(flowXMLElements)
+    //      .toMat(collectXMLElements)(Keep.right)
+
+    def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
+                           validationMaxSize: Option[Int] = None) = Flow[ByteString]
+      .via(CompleteChunkStage.parser(maxSize))
+      .via(ParsingStage.parser(instructions, validationMaxSize, 10))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
     def parseToByteString(instructions: Set[XMLInstruction]) = Flow[ByteString]
-      .via(AkkaXMLParser.parser(instructions))
+      .via(CompleteChunkStage.parser())
+      .via(ParsingStage.parser(instructions))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
     def parseToPrint(instructions: Set[XMLInstruction]) = Flow[ByteString]
-      .via(AkkaXMLParser.parser(instructions))
+      .via(CompleteChunkStage.parser())
+      .via(ParsingStage.parser(instructions))
       .via(flowByteStringPrint)
       .toMat(Sink.ignore)(Keep.right)
 

@@ -16,12 +16,22 @@
 
 package uk.gov.hmrc.akka.xml
 
+import akka.util.ByteString
+
 /**
   * Created by abhishek on 12/12/16.
   */
 trait ParsingDataFunctions {
 
-  def insertBytesInChunk(chunk: Array[Byte], offset: Int, at: Int, insert: Array[Byte]): Array[Byte] = {
-    chunk.slice(offset, at) ++ insert
+  def extractBytes(data: ByteString, from: Int, to: Int): ByteString = {
+    data.slice(from, to)
   }
+
+  def insertBytes(data: ByteString, offset: Int, at: Int, insert: Array[Byte]): ByteString = {
+    data.slice(offset, at) ++ insert
+  }
+
 }
+
+
+case class ParsingData(data: ByteString, extractedElements: Set[XMLElement], totalProcessedLength: Int)

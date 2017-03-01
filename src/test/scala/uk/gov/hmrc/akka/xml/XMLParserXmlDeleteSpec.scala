@@ -36,7 +36,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   import f._
 
-  behavior of "AkkaXMLParser#parser"
+  behavior of "CompleteChunkStage#parser"
 
   it should "delete a element from a valid xml when xml is in single chunk" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
@@ -44,7 +44,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
@@ -59,7 +59,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
@@ -74,7 +74,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
@@ -89,7 +89,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "42"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
@@ -105,7 +105,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "75"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
@@ -121,7 +121,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(AkkaXMLParser.STREAM_SIZE -> "75"), Some(AkkaXMLParser.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
