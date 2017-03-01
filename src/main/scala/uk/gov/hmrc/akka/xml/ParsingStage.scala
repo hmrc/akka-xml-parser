@@ -27,7 +27,7 @@ import com.fasterxml.aalto.stax.InputFactoryImpl
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Created by abhishek on 28/02/17.
@@ -71,7 +71,7 @@ object ParsingStage {
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
-            //processStage(processOnUpstreamFinish)
+            processStage(processOnUpstreamFinish)
             completeStage()
           }
         })
@@ -84,40 +84,68 @@ object ParsingStage {
 
         def processOnPush() = {
           parsingData = grab(in)
-          println("------" + parsingData)
           chunkOffset = 0
-          Try {
-            parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
-            advanceParser()
-            push(out, (ByteString(streamBuffer.toArray),
-              getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
-            streamBuffer.clear()
+          (validationMaxSize) match {
+            case Some(validationSize)
+              if parsingData.totalProcessedLength > (validationSize + validationMaxSizeOffset) &&
+                instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_)) =>
+              Failure(new NoValidationTagsFoundWithinFirstNBytesException)
+            case _ =>
+              Try {
+                parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
+                advanceParser()
+                push(out, (ByteString(streamBuffer.toArray),
+                  getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
+                streamBuffer.clear()
+              }
+          }
+        }
+
+        def processOnUpstreamFinish(): Try[Unit] = {
+          for {
+            _ <- Try(advanceParser())
+            _ <- if ((instructions.count(x => x.isInstanceOf[XMLValidate]) > 0) &&
+              (completedInstructions.count(x => x.isInstanceOf[XMLValidate]) != instructions.count(x => x.isInstanceOf[XMLValidate]))) {
+              Failure(new IncompleteXMLValidationException)
+            }
+            else Success()
+          } yield {
+            if (node.nonEmpty)
+              xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
+                (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
+            emitStage()
           }
         }
 
         def processStage(f: () => Try[Unit]) = {
           f().recover {
-            //              case e: WFCException =>
-            //                emitStage(
-            //                  XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)),
-            //                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-            //                )(ByteString(incompleteBytes.toArray ++ chunk))
-            //                completeStage()
-            //              case e: MaxSizeError =>
-            //                emitStage(
-            //                  XMLElement(Nil, Map.empty, Some(STREAM_MAX_SIZE)),
-            //                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-            //                )(ByteString(incompleteBytes.toArray ++ chunk))
-            //                completeStage()
-            //              case e: EmptyStreamError =>
-            //                emitStage(
-            //                  XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)),
-            //                  XMLElement(Nil, Map(STREAM_SIZE -> totalReceivedLength.toString), Some(STREAM_SIZE))
-            //                )(ByteString(Array.empty[Byte]))
-            //                completeStage()
+            case e: WFCException =>
+              emitStage(
+                XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
+              completeStage()
+            case e: NoValidationTagsFoundWithinFirstNBytesException =>
+              emitStage(
+                XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
+                  Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
+                XMLElement(Nil, Map(STREAM_SIZE -> parsingData.totalProcessedLength.toString), Some(STREAM_SIZE)))
+              completeStage()
+            case e: IncompleteXMLValidationException =>
+              emitStage(
+                XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
+                  Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
+              completeStage()
+            case e: ParserValidationError =>
+              emitStage(
+                XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE))
+              )
+              completeStage()
             case e: Throwable =>
               throw e
           }
+        }
+
+        private def emitStage(elementsToAdd: XMLElement*) = {
+          emit(out, ((parsingData.data), getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements ++ elementsToAdd))
         }
 
         var parsingData = ParsingData(ByteString(""), Set.empty, 0)
@@ -147,7 +175,6 @@ object ParsingStage {
                     val keys = getPredicateMatch(parser, e.attributes)
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
-
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
                       case path if path == node.toList =>
@@ -157,7 +184,6 @@ object ParsingStage {
                       case _ =>
                         chunkOffset = end
                     }
-
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
                     val newBytes = parsingData.data.slice(start, end)
                     if (!parser.isEmptyElement) {
@@ -167,11 +193,9 @@ object ParsingStage {
                       }
                       validators += ele
                     }
-
                   case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
                     streamBuffer ++= extractBytes(parsingData.data, chunkOffset, start)
                     chunkOffset = end
-
                   case x =>
                 })
                 if (parser.hasNext) advanceParser()
