@@ -116,40 +116,40 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-  //  it should "validate over multiple chunks where start tag is also spit in chunks - message size check" in {
-  //    val source = Source(List(ByteString("<xml><body>"), ByteString("<fo"), ByteString("123"),
-  //      ByteString("o>test</fo123o><bar>test</bar></bo"), ByteString("dy></xml>")))
-  //    val validatingFunction: String => Option[Throwable] = (string: String) =>
-  //      if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new NoStackTrace {})
-  //    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
-  //
-  //    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-  //      r shouldBe Set(
-  //        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
-  //      )
-  //    }
-  //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-  //      r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
-  //    }
-  //  }
+    it should "validate over multiple chunks where start tag is also spit in chunks - message size check" in {
+      val source = Source(List(ByteString("<xml><body>"), ByteString("<fo"), ByteString("123"),
+        ByteString("o>test</fo123o><bar>test</bar></bo"), ByteString("dy></xml>")))
+      val validatingFunction: String => Option[Throwable] = (string: String) =>
+        if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new NoStackTrace {})
+      val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
 
-  //
-  //  it should "validate over multiple chunks where end tag is also spit in chunks" in {
-  //    val source = Source(List(ByteString("<xml><body>"), ByteString("<fo123o>test</fo"), ByteString("123"),
-  //      ByteString("o><bar>test</bar></bo"), ByteString("dy></xml>")))
-  //    val validatingFunction: String => Option[Throwable] = (string: String) =>
-  //      if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new NoStackTrace {})
-  //    val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
-  //
-  //    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-  //      r shouldBe Set(
-  //        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
-  //      )
-  //    }
-  //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-  //      r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
-  //    }
-  //  }
+      whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+        r shouldBe Set(
+          XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        )
+      }
+      whenReady(source.runWith(parseToByteString(paths))) { r =>
+        r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
+      }
+    }
+
+
+    it should "validate over multiple chunks where end tag is also spit in chunks" in {
+      val source = Source(List(ByteString("<xml><body>"), ByteString("<fo123o>test</fo"), ByteString("123"),
+        ByteString("o><bar>test</bar></bo"), ByteString("dy></xml>")))
+      val validatingFunction: String => Option[Throwable] = (string: String) =>
+        if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new NoStackTrace {})
+      val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body"), validatingFunction))
+
+      whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+        r shouldBe Set(
+          XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        )
+      }
+      whenReady(source.runWith(parseToByteString(paths))) { r =>
+        r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
+      }
+    }
 
 
   it should "fail validation over multiple chunks" in {
