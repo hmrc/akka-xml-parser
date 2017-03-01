@@ -17,20 +17,15 @@
 package uk.gov.hmrc.akka.xml
 
 import akka.NotUsed
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
-import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
-import com.fasterxml.aalto.stax.InputFactoryImpl
-
-import scala.annotation.tailrec
-import scala.util.{Failure, Try}
 
 /**
   * Created by abhishek on 01/03/17.
   */
-object MinimunChunk {
+object MinimumChunk {
 
   def parser(minimumChunkSize: Int):
   Flow[ByteString, ByteString, NotUsed] = {
