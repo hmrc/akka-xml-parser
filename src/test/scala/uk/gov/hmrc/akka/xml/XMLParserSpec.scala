@@ -34,6 +34,18 @@ class XMLParserSpec extends WordSpec
   private implicit val sys = ActorSystem("xml-parser")
   private implicit val mat = ActorMaterializer()
 
+  private val byteStringSink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
+    .map(_.data)
+    .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
+
+  private val xmlElementSink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
+    .map(_.elements)
+    .toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.right)
+
+  private val streamSizeSink: Sink[ParserData, Future[Int]] = Flow[ParserData]
+    .map(_.size)
+    .toMat(Sink.fold(0)(_ + _))(Keep.right)
+
   override def afterAll(): Unit = {
     sys.terminate()
   }
@@ -49,14 +61,10 @@ class XMLParserSpec extends WordSpec
         )
       )
 
-      val parser = new XMLParser(Set(XMLExtract(XPath("helloworld"))))
-
-      val sink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
-        .map(_.data)
-        .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
+      val parser = new XMLParser(Set.empty)
 
       val res: Future[ByteString] = parser.parse(xmlSrc)
-        .runWith(sink)
+        .runWith(byteStringSink)
 
       whenReady(res) {
         _.utf8String shouldBe "<helloworld>foobar</helloworld>"
@@ -84,12 +92,8 @@ class XMLParserSpec extends WordSpec
 
       val parser = new XMLParser(instructions)
 
-      val sink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
-        .map(_.elements)
-        .toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.right)
-
       val res: Future[Set[XMLElement]] = parser.parse(xmlSrc)
-        .runWith(sink)
+        .runWith(xmlElementSink)
 
       whenReady(res) {
         _ shouldBe Set(
@@ -111,15 +115,25 @@ class XMLParserSpec extends WordSpec
 
       val parser = new XMLParser(Set(XMLExtract(XPath("root"))))
 
-      val sink: Sink[ParserData, Future[Int]] = Flow[ParserData]
-        .map(_.size)
-        .toMat(Sink.fold(0)(_ + _))(Keep.right)
-
       val res: Future[Int] = parser.parse(xmlSrc)
-        .runWith(sink)
+        .runWith(streamSizeSink)
 
       whenReady(res) {
         _ shouldBe EXPECTED_SIZE
+      }
+    }
+
+    "throw an exception if the xml is malformed" in {
+      val src = Source(
+        List(ByteString("<hello>world"))
+      )
+
+      val parser = new XMLParser(Set.empty)
+
+      val res: Future[ByteString] = parser.parse(src).runWith(byteStringSink)
+
+      whenReady(res) {
+        _.utf8String shouldBe ""
       }
     }
 

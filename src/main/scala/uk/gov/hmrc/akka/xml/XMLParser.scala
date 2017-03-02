@@ -37,10 +37,14 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
   def parse(source: Source[ByteString, _])(implicit mat: Materializer): Source[ParserData, _] = {
     val initialData = ParserData(ByteString.empty, instructions)
 
-    source.scan(initialData) { (data, chunk) =>
-      parser.getInputFeeder.feedInput(chunk.toByteBuffer)
-      processChunk(chunk, data.instructions, data.copy(size = chunk.length))
-    }
+    source
+      .scan(initialData) { (data, chunk) =>
+        parser.getInputFeeder.feedInput(chunk.toByteBuffer)
+        processChunk(chunk, data.instructions, data.copy(size = chunk.length))
+      }
+      .recover {
+        case _ => ParserData(ByteString.empty)
+      }
   }
 
   @tailrec
@@ -63,9 +67,6 @@ class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
               ))
             case _ => processChunk(chunk, instructions, data.copy(xPath = currentPath))
           }
-
-
-          //processChunk(chunk, instructions, data.copy(xPath = currentPath))
         case XMLStreamConstants.CHARACTERS =>
           val currentPath = data.xPath
           val instr = instructions.collectFirst {
