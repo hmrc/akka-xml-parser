@@ -18,8 +18,9 @@ package uk.gov.hmrc.akka.xml
 
 import javax.xml.stream.XMLStreamConstants
 
+import akka.NotUsed
 import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import com.fasterxml.aalto.{AsyncByteBufferFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader}
 import com.fasterxml.aalto.stax.InputFactoryImpl
@@ -29,15 +30,15 @@ import scala.annotation.tailrec
 /**
   * Created by william on 18/02/17.
   */
-class XMLParser(instructions: Set[XMLInstruction]) extends StreamHelper {
+class XMLParser extends StreamHelper {
 
   private lazy val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
   private lazy val parser: AsyncXMLStreamReader[AsyncByteBufferFeeder] = feeder.createAsyncForByteBuffer()
 
-  def parse(source: Source[ByteString, _])(implicit mat: Materializer): Source[ParserData, _] = {
+  def parse(instructions: Set[XMLInstruction])(implicit mat: Materializer): Flow[ByteString, ParserData, NotUsed] = {
     val initialData = ParserData(ByteString.empty, instructions)
 
-    source
+    Flow[ByteString]
       .scan(initialData) { (data, chunk) =>
         parser.getInputFeeder.feedInput(chunk.toByteBuffer)
         processChunk(chunk, data.instructions, data.copy(size = chunk.length))
