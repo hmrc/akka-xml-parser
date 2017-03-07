@@ -47,6 +47,7 @@ class XMLParserSpec extends WordSpec
     .toMat(Sink.fold(0)(_ + _))(Keep.right)
 
   override def afterAll(): Unit = {
+    mat.shutdown()
     sys.terminate()
   }
 
