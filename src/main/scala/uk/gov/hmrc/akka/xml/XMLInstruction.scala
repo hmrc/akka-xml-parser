@@ -27,4 +27,6 @@ case class XMLUpdate(xPath: Seq[String], value: Option[String] = None, attribute
 
 case class XMLValidate(start: Seq[String], end: Seq[String], f: String => Option[Throwable]) extends XMLInstruction
 
+case class XMLTransform(xPath: Seq[String], f: String => String) extends XMLInstruction
+
 case class XMLDelete(xPath: Seq[String]) extends XMLInstruction
