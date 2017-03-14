@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.akka.xml
+package uk.gov.hmrc.akka.xml.functional
 
 import akka.util.ByteString
+import uk.gov.hmrc.akka.xml.{XMLElement, XMLInstruction}
 
 /**
   * Created by william on 18/02/17.
@@ -28,5 +29,8 @@ case class ParserData(
                        xPath: Seq[String] = Seq.empty,
                        characters: Option[String] = None,
                        attributes: Map[String, String] = Map.empty,
-                       size: Int = 0
+                       size: Int = 0,
+                       totalProcessedLength: Int = 0,
+                       incompleteBytes: ByteString = ByteString.empty,
+                       chunkOffset: Int = 0
                      )

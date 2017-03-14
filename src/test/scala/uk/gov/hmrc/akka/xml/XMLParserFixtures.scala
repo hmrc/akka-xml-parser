@@ -64,14 +64,10 @@ trait XMLParserFixtures {
     })
 
     def collectXMLElements: Sink[Set[XMLElement], Future[Set[XMLElement]]] =
-      Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)((a, b) => {
-        a ++ b
-      })
+      Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)(_ ++ _)
 
     def collectByteString: Sink[ByteString, Future[ByteString]] =
-      Sink.fold[ByteString, ByteString](ByteString(""))((a, b) => {
-        a ++ b
-      })
+      Sink.fold[ByteString, ByteString](ByteString(""))(_ ++ _)
 
   }
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.akka.xml
+package uk.gov.hmrc.akka.xml.functional
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -22,13 +22,14 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import uk.gov.hmrc.akka.xml.{XMLDelete, XMLInstruction, XPath}
 
 import scala.concurrent.Future
 
 /**
-  * Created by william on 18/02/17.
+  * Created by william on 14/03/17.
   */
-class XMLParserSpec extends WordSpec
+class XMLDeleteParserSpec extends WordSpec
   with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   private implicit val sys = ActorSystem("xml-parser")
@@ -37,14 +38,6 @@ class XMLParserSpec extends WordSpec
   private val byteStringSink: Sink[ParserData, Future[ByteString]] = Flow[ParserData]
     .map(_.data)
     .toMat(Sink.fold(ByteString.empty)(_ ++ _))(Keep.right)
-
-  private val xmlElementSink: Sink[ParserData, Future[Set[XMLElement]]] = Flow[ParserData]
-    .map(_.elements)
-    .toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.right)
-
-  private val streamSizeSink: Sink[ParserData, Future[Int]] = Flow[ParserData]
-    .map(_.size)
-    .toMat(Sink.fold(0)(_ + _))(Keep.right)
 
   override def afterAll(): Unit = {
     mat.shutdown()
@@ -62,7 +55,7 @@ class XMLParserSpec extends WordSpec
         )
       )
 
-      val parser = new XMLParser()
+      val parser = new XMLDeleteParser()
 
       val res: Future[ByteString] = xmlSrc.via(parser.parse(Set.empty)).runWith(byteStringSink)
 
@@ -71,11 +64,11 @@ class XMLParserSpec extends WordSpec
       }
     }
 
-    "return a flow which, when ran into a sink, will produce a Set of the extracted elements" in {
+    "return a flow which, when ran into a sink, will delete the specified elements" in {
       val xmlSrc = Source(
         List(
           ByteString("""<root xmlns="http://www.govtalk.gov.uk/CM/envelope">"""),
-          ByteString("<hello"), ByteString("""world foo="bar">"""),
+/*          ByteString("<hello"), */ ByteString("""<helloworld foo="bar">"""),
           ByteString("foo"), ByteString("bar"),
           ByteString("</helloworld>"),
           ByteString("<hello"), ByteString("""world foo="bar">"""),
@@ -86,54 +79,17 @@ class XMLParserSpec extends WordSpec
       )
 
       val instructions = Set[XMLInstruction](
-        XMLExtract(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")),
-        XMLExtract(XPath("root/helloworld"), Map("foo" -> "bar"))
+        XMLDelete(XPath("root/helloworld"))
       )
 
-      val parser = new XMLParser()
+      val parser = new XMLDeleteParser()
 
-      val res: Future[Set[XMLElement]] = xmlSrc.via(parser.parse(instructions)).runWith(xmlElementSink)
-
-      whenReady(res) {
-        _ shouldBe Set(
-          XMLElement(XPath("root"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")),
-          XMLElement(XPath("root/helloworld"), Map("foo" -> "bar"), value = Some("foobar"))
-        )
-      }
-    }
-
-    "return a flow which, when ran into a sink, will produce the total size of the Source data" in {
-      val xmlSrc = Source(
-        List(
-          ByteString("<root>"),
-          ByteString("</root>")
-        )
-      )
-
-      val EXPECTED_SIZE = 13
-
-      val parser = new XMLParser()
-
-      val res: Future[Int] = xmlSrc.via(parser.parse(Set(XMLExtract(XPath("root"))))).runWith(streamSizeSink)
+      val res: Future[ByteString] = xmlSrc.via(parser.parse(instructions)).runWith(byteStringSink)
 
       whenReady(res) {
-        _ shouldBe EXPECTED_SIZE
+        _.utf8String shouldBe """<root xmlns="http://www.govtalk.gov.uk/CM/envelope"><helloworld foo="bar">foobar</helloworld></root>"""
       }
     }
-
-//    "throw an exception if the xml is malformed" in {
-//      val src = Source(
-//        List(ByteString("<hello>world"))
-//      )
-//
-//      val parser = new XMLParser(Set.empty)
-//
-//      val res: Future[ByteString] = parser.parse(src).runWith(byteStringSink)
-//
-//      whenReady(res) {
-//        _.utf8String shouldBe ""
-//      }
-//    }
 
   }
 

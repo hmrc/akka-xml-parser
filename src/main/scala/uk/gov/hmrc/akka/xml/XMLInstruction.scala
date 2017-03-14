@@ -25,8 +25,6 @@ case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.
 
 case class XMLUpdate(xPath: Seq[String], value: Option[String] = None, attributes: Map[String, String] = Map.empty, isUpsert: Boolean = false) extends XMLInstruction
 
-case class XMLTransform(xPath: Seq[String], transformData: Map[String, String], transform: Map[String, String] => String) extends XMLInstruction
-
 case class XMLValidate(start: Seq[String], end: Seq[String], f: String => Option[Throwable]) extends XMLInstruction
 
 case class XMLDelete(xPath: Seq[String]) extends XMLInstruction
