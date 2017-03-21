@@ -22,4 +22,4 @@ package uk.gov.hmrc.akka.xml
 case class XMLGroup(rootNode: String, sequenceNumber: Int)
 
 case class XMLElement(xPath: Seq[String], attributes: Map[String, String] = Map.empty, value: Option[String] = None,
-                      sequenceNumber: Option[Seq[XMLGroup]] = None)
+                      groupedNodes: Option[Seq[XMLGroup]] = None)

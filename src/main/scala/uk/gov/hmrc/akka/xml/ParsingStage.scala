@@ -43,12 +43,12 @@ object ParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, grouping: Option[Seq[String]] = None)
+  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, parentNodes: Option[Seq[String]] = None)
   : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, grouping))
+    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, parentNodes))
   }
 
-  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, grouping: Option[Seq[String]])
+  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, parentNodes: Option[Seq[String]])
     extends GraphStage[FlowShape[ParsingData, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -151,14 +151,6 @@ object ParsingStage {
         var parsingData = ParsingData(ByteString(""), Set.empty, 0)
         var isCharacterBuffering = false
         var chunkOffset = 0
-        var sequence: mutable.Map[String, (Int, Boolean)] = {
-          var map = mutable.Map[String, (Int, Boolean)]()
-          grouping.foreach { groups =>
-            groups.foreach(group =>
-              map(group) = (0, false))
-          }
-          map
-        }
 
         val node = ArrayBuffer[String]()
         val completedInstructions = mutable.Set[XMLInstruction]()
@@ -166,6 +158,8 @@ object ParsingStage {
         val bufferedText = new StringBuilder
         val streamBuffer = ArrayBuffer[Byte]()
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
+        val groupings = parentNodes.map(nodes =>
+          mutable.Map.apply(nodes.map((_, (0, false))): _*))
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
@@ -178,24 +172,23 @@ object ParsingStage {
 
               case XMLStreamConstants.START_ELEMENT =>
                 val localName = parser.getLocalName
-
-                if (sequence.contains(localName)) {
-                  val currentSeq = sequence(localName)._1
-                  sequence(localName) = (currentSeq + 1, true)
+                val activeGroupings = groupings collect {
+                  case nodes =>
+                    if (nodes.contains(localName)) {
+                      val currentSeq = nodes(localName)._1
+                      nodes(localName) = (currentSeq + 1, true)
+                    }
+                    nodes.filter(_._2._2 == true)
+                      .mapValues(_._1)
                 }
-
                 node += localName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
                   case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
-
-                    val activeGroupings =
-                      sequence.filter(_._2._2 == true)
-                      .mapValues(_._1)
-
-                    val sequenceNumber = if(activeGroupings.isEmpty) None else Some(activeGroupings.map(group => XMLGroup(group._1, group._2)).toSeq)
-
-                    val ele = XMLElement(e.xPath, keys, None, sequenceNumber)
+                    val groupedNodes = activeGroupings collect {
+                      case nodes if nodes.nonEmpty => nodes.map(group => XMLGroup(group._1, group._2)).toSeq
+                    }
+                    val ele = XMLElement(e.xPath, keys, None, groupedNodes)
                     xmlElements.add(ele)
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
@@ -226,9 +219,10 @@ object ParsingStage {
                 val localName = parser.getLocalName
                 isCharacterBuffering = false
 
-                if (sequence.contains(localName)) {
-                  val currentSeq = sequence(localName)._1
-                  sequence(localName) = (currentSeq, false)
+                groupings collect {
+                  case nodes if nodes.contains(localName) =>
+                    val currentSeq = nodes(localName)._1
+                    nodes(localName) = (currentSeq, false)
                 }
 
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
