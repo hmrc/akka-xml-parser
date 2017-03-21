@@ -34,10 +34,10 @@ trait XMLParserFixtures {
     implicit val mat = ActorMaterializer()
 
     def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
-                           validationMaxSize: Option[Int] = None) = Flow[ByteString]
+                           validationMaxSize: Option[Int] = None, grouping: Option[Seq[String]] = None) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser(maxSize))
-      .via(ParsingStage.parser(instructions, validationMaxSize, 10))
+      .via(ParsingStage.parser(instructions, validationMaxSize, 10, grouping))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 

@@ -43,12 +43,12 @@ object ParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000)
+  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, parentNodes: Option[Seq[String]] = None)
   : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset))
+    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, parentNodes))
   }
 
-  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int)
+  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, parentNodes: Option[Seq[String]])
     extends GraphStage[FlowShape[ParsingData, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -158,6 +158,8 @@ object ParsingStage {
         val bufferedText = new StringBuilder
         val streamBuffer = ArrayBuffer[Byte]()
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
+        val groupings = parentNodes.map(nodes =>
+          mutable.Map.apply(nodes.map((_, (0, false))): _*))
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
@@ -169,11 +171,24 @@ object ParsingStage {
                 streamBuffer ++= parsingData.data.slice(chunkOffset, parsingData.data.length)
 
               case XMLStreamConstants.START_ELEMENT =>
-                node += parser.getLocalName
+                val localName = parser.getLocalName
+                val activeGroupings = groupings collect {
+                  case nodes =>
+                    if (nodes.contains(localName)) {
+                      val currentSeq = nodes(localName)._1
+                      nodes(localName) = (currentSeq + 1, true)
+                    }
+                    nodes.filter(_._2._2 == true)
+                      .mapValues(_._1)
+                }
+                node += localName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
                   case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
-                    val ele = XMLElement(e.xPath, keys, None)
+                    val groupedNodes = activeGroupings collect {
+                      case nodes if nodes.nonEmpty => nodes.map(group => XMLGroup(group._1, group._2)).toSeq
+                    }
+                    val ele = XMLElement(e.xPath, keys, None, groupedNodes)
                     xmlElements.add(ele)
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
@@ -201,7 +216,15 @@ object ParsingStage {
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
+                val localName = parser.getLocalName
                 isCharacterBuffering = false
+
+                groupings collect {
+                  case nodes if nodes.contains(localName) =>
+                    val currentSeq = nodes(localName)._1
+                    nodes(localName) = (currentSeq, false)
+                }
+
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _) =>
@@ -243,7 +266,7 @@ object ParsingStage {
                   }
                 })
                 bufferedText.clear()
-                node -= parser.getLocalName
+                node -= localName
                 if (parser.hasNext) advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
@@ -285,7 +308,7 @@ object ParsingStage {
           (
             if (start == 1) 0 else start - (parsingData.totalProcessedLength - parsingData.data.length),
             reader.getLocationInfo.getEndingByteOffset.toInt - (parsingData.totalProcessedLength - parsingData.data.length)
-            )
+          )
         }
       }
   }

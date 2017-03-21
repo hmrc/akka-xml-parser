@@ -22,6 +22,8 @@ import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.mutable
+
 /**
   * Created by abhishek on 23/09/16.
   */
@@ -191,8 +193,6 @@ class XMLParserXmlExtractSpec extends FlatSpec
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
-
-
 
 
   it should "extract a single value when the bytes are split and element is whitespace" in {
@@ -722,4 +722,161 @@ class XMLParserXmlExtractSpec extends FlatSpec
       }
     }
   }
- }
+
+  it should "include a sequence number for all sub-nodes of a grouped element" in {
+
+    val source = Source(List(ByteString(
+      "<GovTalkMessage xmlns=\"http://www.govtalk.gov.uk/CM/envelope \">"), ByteString(
+      "<Body><EnrolmentRequest SchemaVersion=\"2.0\" xmlns=\"http://www.govtalk.gov.uk/gateway/enrolmentrequest \">"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc1</ServiceName><Key Type=\"ExampleRef\">123456789</Key><Key Type=\"PostCode\">AA11AA</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc2</ServiceName><Key Type=\"ExampleRef\">987654321</Key><Key Type=\"PostCode\">BB22BB</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "</EnrolmentRequest></Body></GovTalkMessage>"))
+    )
+
+    val paths = Set[XMLInstruction](
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName")),
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"))
+    )
+
+    val expected = Set(
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc1"), Some(Seq(XMLGroup("Enrolment", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"), Some(Seq(XMLGroup("Enrolment", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"), Some(Seq(XMLGroup("Enrolment", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("Enrolment", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"), Some(Seq(XMLGroup("Enrolment", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2)))),
+      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, grouping = Some(Seq("Enrolment"))))) { r =>
+      r shouldBe expected
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
+    }
+  }
+
+  it should "not include a sequence number for any nodes that are not sub-nodes" in {
+
+    val source = Source(List(ByteString(
+      "<GovTalkMessage xmlns=\"http://www.govtalk.gov.uk/CM/envelope \">"), ByteString(
+      "<Body><EnrolmentRequest SchemaVersion=\"2.0\" xmlns=\"http://www.govtalk.gov.uk/gateway/enrolmentrequest \">"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc1</ServiceName><Key Type=\"ExampleRef\">123456789</Key><Key Type=\"PostCode\">AA11AA</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc2</ServiceName><Key Type=\"ExampleRef\">987654321</Key><Key Type=\"PostCode\">BB22BB</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "</EnrolmentRequest></Body></GovTalkMessage>"))
+    )
+
+    val paths = Set[XMLInstruction](
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName")),
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"))
+    )
+
+    val expected = Set(
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc1"), Some(Seq(XMLGroup("ServiceName", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789")),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA")),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("ServiceName", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321")),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB")),
+      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, grouping = Some(Seq("ServiceName"))))) { r =>
+      r shouldBe expected
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
+    }
+  }
+
+  it should "be able to differentiate multiple distinct nodes" in {
+
+    val source = Source(List(ByteString(
+      "<GovTalkMessage xmlns=\"http://www.govtalk.gov.uk/CM/envelope \">"), ByteString(
+      "<Body><EnrolmentRequest SchemaVersion=\"2.0\" xmlns=\"http://www.govtalk.gov.uk/gateway/enrolmentrequest \">"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc1</ServiceName><Key Type=\"ExampleRef\">123456789</Key><Key Type=\"PostCode\">AA11AA</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc2</ServiceName><Key Type=\"ExampleRef\">987654321</Key><Key Type=\"PostCode\">BB22BB</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "</EnrolmentRequest></Body></GovTalkMessage>"))
+    )
+
+    val paths = Set[XMLInstruction](
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName")),
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"))
+    )
+
+    val expected = Set(
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc1"), Some(Seq(XMLGroup("ServiceName", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"), Some(Seq(XMLGroup("Key", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"), Some(Seq(XMLGroup("Key", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("ServiceName", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"), Some(Seq(XMLGroup("Key", 3)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Key", 4)))),
+      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, grouping = Some(Seq("Key", "ServiceName"))))) { r =>
+      r shouldBe expected
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
+    }
+  }
+
+  it should "be able to differentiate multiple embedded nodes" in {
+
+    val source = Source(List(ByteString(
+      "<GovTalkMessage xmlns=\"http://www.govtalk.gov.uk/CM/envelope \">"), ByteString(
+      "<Body><EnrolmentRequest SchemaVersion=\"2.0\" xmlns=\"http://www.govtalk.gov.uk/gateway/enrolmentrequest \">"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc1</ServiceName><Key Type=\"ExampleRef\">123456789</Key><Key Type=\"PostCode\">AA11AA</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "<Enrolment><ServiceName>ExampleSvc2</ServiceName><Key Type=\"ExampleRef\">987654321</Key><Key Type=\"PostCode\">BB22BB</Key>"), ByteString(
+      "<X509Certificate>sf8cgcQ7h0oA==</X509Certificate><RegistrationCategory>Individual</RegistrationCategory>"), ByteString(
+      "<EmailAddress>joe.bloggs@somemail.com</EmailAddress><Activated>true</Activated></Enrolment>"), ByteString(
+      "</EnrolmentRequest></Body></GovTalkMessage>"))
+    )
+
+    val paths = Set[XMLInstruction](
+      XMLExtract(Seq("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"))
+    )
+
+    val expected = Set(
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 1)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 2)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"),  Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 3)))),
+      XMLElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 4)))),
+      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, grouping = Some(Seq("Enrolment", "Key"))))) { r =>
+      r shouldBe expected
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
+    }
+  }
+}
