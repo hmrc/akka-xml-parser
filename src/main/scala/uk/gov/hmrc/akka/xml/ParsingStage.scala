@@ -193,7 +193,7 @@ object ParsingStage {
                       sequence.filter(_._2._2 == true)
                       .mapValues(_._1)
 
-                    val sequenceNumber = if(activeGroupings.isEmpty) None else Some(activeGroupings)
+                    val sequenceNumber = if(activeGroupings.isEmpty) None else Some(activeGroupings.map(group => XMLGroup(group._1, group._2)).toSeq)
 
                     val ele = XMLElement(e.xPath, keys, None, sequenceNumber)
                     xmlElements.add(ele)
