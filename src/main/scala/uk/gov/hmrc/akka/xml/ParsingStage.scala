@@ -189,10 +189,12 @@ object ParsingStage {
                   case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
 
-                    val activeGroupings = sequence.find(_._2._2 == true)
-                    val sequenceNumber = activeGroupings.map(group =>
-                      (group._1, group._2._1)
-                    )
+                    val activeGroupings =
+                      sequence.filter(_._2._2 == true)
+                      .mapValues(_._1)
+
+                    val sequenceNumber = if(activeGroupings.isEmpty) None else Some(activeGroupings)
+
                     val ele = XMLElement(e.xPath, keys, None, sequenceNumber)
                     xmlElements.add(ele)
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
