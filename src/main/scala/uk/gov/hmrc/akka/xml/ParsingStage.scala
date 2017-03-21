@@ -43,12 +43,12 @@ object ParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, grouping: Option[String] = None)
+  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, grouping: Option[Seq[String]] = None)
   : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
     Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, grouping))
   }
 
-  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, grouping: Option[String])
+  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, grouping: Option[Seq[String]])
     extends GraphStage[FlowShape[ParsingData, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -151,8 +151,14 @@ object ParsingStage {
         var parsingData = ParsingData(ByteString(""), Set.empty, 0)
         var isCharacterBuffering = false
         var chunkOffset = 0
-        var sequence = 0
-        var isGroupingMode = false
+        var sequence: mutable.Map[String, (Int, Boolean)] = {
+          var map = mutable.Map[String, (Int, Boolean)]()
+          grouping.foreach { groups =>
+            groups.foreach(group =>
+              map(group) = (0, false))
+          }
+          map
+        }
 
         val node = ArrayBuffer[String]()
         val completedInstructions = mutable.Set[XMLInstruction]()
@@ -173,18 +179,20 @@ object ParsingStage {
               case XMLStreamConstants.START_ELEMENT =>
                 val localName = parser.getLocalName
 
-                grouping.foreach { name =>
-                  if (name == localName) {
-                    isGroupingMode = true
-                    sequence += 1
-                  }
+                if (sequence.contains(localName)) {
+                  val currentSeq = sequence(localName)._1
+                  sequence(localName) = (currentSeq + 1, true)
                 }
 
                 node += localName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
                   case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
-                    val sequenceNumber = if(isGroupingMode) Option(sequence) else None
+
+                    val activeGroupings = sequence.find(_._2._2 == true)
+                    val sequenceNumber = activeGroupings.map(group =>
+                      (group._1, group._2._1)
+                    )
                     val ele = XMLElement(e.xPath, keys, None, sequenceNumber)
                     xmlElements.add(ele)
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
@@ -215,11 +223,12 @@ object ParsingStage {
               case XMLStreamConstants.END_ELEMENT =>
                 val localName = parser.getLocalName
                 isCharacterBuffering = false
-                grouping.foreach { name =>
-                  if (name == localName) {
-                    isGroupingMode = false
-                  }
+
+                if (sequence.contains(localName)) {
+                  val currentSeq = sequence(localName)._1
+                  sequence(localName) = (currentSeq, false)
                 }
+
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _) =>
@@ -303,7 +312,7 @@ object ParsingStage {
           (
             if (start == 1) 0 else start - (parsingData.totalProcessedLength - parsingData.data.length),
             reader.getLocationInfo.getEndingByteOffset.toInt - (parsingData.totalProcessedLength - parsingData.data.length)
-            )
+          )
         }
       }
   }
