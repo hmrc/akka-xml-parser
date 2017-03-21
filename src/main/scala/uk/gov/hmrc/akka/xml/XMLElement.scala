@@ -19,4 +19,5 @@ package uk.gov.hmrc.akka.xml
 /**
   * Created by abhishek on 02/12/16.
   */
-case class XMLElement(xPath: Seq[String], attributes: Map[String, String] = Map.empty, value: Option[String] = None)
+case class XMLElement(xPath: Seq[String], attributes: Map[String, String] = Map.empty, value: Option[String] = None,
+                      sequenceNumber: Option[Int] = None)
