@@ -41,6 +41,14 @@ trait XMLParserFixtures {
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
+    def parseToXMLGroupElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
+                           validationMaxSize: Option[Int] = None, parentNodes: Option[Seq[String]] = None) = Flow[ByteString]
+      .via(MinimumChunk.parser(15))
+      .via(CompleteChunkStage.parser(maxSize))
+      .via(EMACParsingStage.parser(instructions, validationMaxSize, 10, parentNodes))
+      .via(flowXMLGroupElements)
+      .toMat(collectXMLGroupElements)(Keep.right)
+
     def parseToByteString(instructions: Set[XMLInstruction]) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser())
@@ -56,6 +64,8 @@ trait XMLParserFixtures {
 
     def flowXMLElements = Flow[(ByteString, Set[XMLElement])].map(x => x._2)
 
+    def flowXMLGroupElements = Flow[(ByteString, Set[XMLGroupElement])].map(x => x._2)
+
     def flowByteString = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
 
     def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => {
@@ -65,6 +75,11 @@ trait XMLParserFixtures {
 
     def collectXMLElements: Sink[Set[XMLElement], Future[Set[XMLElement]]] =
       Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)((a, b) => {
+        a ++ b
+      })
+
+    def collectXMLGroupElements: Sink[Set[XMLGroupElement], Future[Set[XMLGroupElement]]] =
+      Sink.fold[Set[XMLGroupElement], Set[XMLGroupElement]](Set.empty)((a, b) => {
         a ++ b
       })
 
