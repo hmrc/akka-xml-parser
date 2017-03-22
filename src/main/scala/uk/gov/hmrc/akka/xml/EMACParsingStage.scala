@@ -17,12 +17,12 @@
 package uk.gov.hmrc.akka.xml
 
 import akka.NotUsed
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
-import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 import com.fasterxml.aalto.stax.InputFactoryImpl
+import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -31,24 +31,14 @@ import scala.util.{Failure, Success, Try}
 
 object EMACParsingStage {
   val MALFORMED_STATUS = "Malformed"
-  val STREAM_MAX_SIZE = "Stream max size"
-  val STREAM_IS_EMPTY = "Stream is empty"
-  val STREAM_SIZE_LESS_AND_BELOW_MIN = "Stream Size"
-  val STREAM_SIZE = "Stream Size"
-  val NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE = "No validation tags were found in first n bytes failure"
-  val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
-  val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, parentNodes: Option[Seq[String]] = None)
-  : Flow[ByteString, (ByteString, Set[XMLGroupElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, parentNodes))
-  }
+  def parser(instructions: Set[XMLInstruction],
+             parentNodes: Option[Seq[String]] = None): Flow[ByteString, (ByteString, Set[XMLGroupElement]), NotUsed] =
+    Flow.fromGraph(new StreamingXmlParser(instructions, parentNodes))
 
-  private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, parentNodes: Option[Seq[String]])
-    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]]
-      with EMACStreamHelper
-      with ParsingDataFunctions {
+  private class StreamingXmlParser(instructions: Set[XMLInstruction], parentNodes: Option[Seq[String]])
+    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]] with EMACStreamHelper {
     val in: Inlet[ByteString] = Inlet("XMLParser.in")
     val out: Outlet[(ByteString, Set[XMLGroupElement])] = Outlet("XMLParser.out")
     override val shape: FlowShape[ByteString, (ByteString, Set[XMLGroupElement])] = FlowShape(in, out)
@@ -62,9 +52,7 @@ object EMACParsingStage {
         private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
 
         setHandler(in, new InHandler {
-          override def onPush(): Unit = {
-            processStage(processOnPush)
-          }
+          override def onPush(): Unit = processStage(processOnPush)
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
@@ -74,33 +62,21 @@ object EMACParsingStage {
         })
 
         setHandler(out, new OutHandler {
-          override def onPull(): Unit = {
-            pull(in)
-          }
+          override def onPull(): Unit = pull(in)
         })
 
-        def processOnPush() = {
+        private def processOnPush() = {
           parsingData = grab(in)
-          totalProcessedLength += streamBuffer.length
-          totalProcessedLength += chunk.length
-          chunkOffset = 0
-          (validationMaxSize) match {
-            case Some(validationSize)
-              if totalProcessedLength > (validationSize + validationMaxSizeOffset) &&
-                instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_)) =>
-              Failure(new NoValidationTagsFoundWithinFirstNBytesException)
-            case _ =>
-              Try {
-                parser.getInputFeeder.feedInput(parsingData.toArray, 0, parsingData.length)
-                advanceParser()
-                push(out, (ByteString(streamBuffer.toArray),
-                  getCompletedXMLElements(xmlElements).toSet))
-                streamBuffer.clear()
-              }
+          Try {
+            parser.getInputFeeder.feedInput(parsingData.toArray, 0, parsingData.length)
+            advanceParser()
+            push(out, (ByteString(streamBuffer.toArray),
+              getCompletedXMLElements(xmlElements).toSet))
+            streamBuffer.clear()
           }
         }
 
-        def processOnUpstreamFinish(): Try[Unit] = {
+        private def processOnUpstreamFinish() = {
           for {
             _ <- Try(advanceParser())
             _ <- if ((instructions.count(x => x.isInstanceOf[XMLValidate]) > 0) &&
@@ -116,27 +92,11 @@ object EMACParsingStage {
           }
         }
 
-        def processStage(f: () => Try[Unit]) = {
+        private def processStage(f: () => Try[Unit]) = {
           f().recover {
             case e: WFCException =>
               emitStage(
                 XMLGroupElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-              completeStage()
-            case e: NoValidationTagsFoundWithinFirstNBytesException =>
-              emitStage(
-                XMLGroupElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
-                  Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
-                XMLGroupElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE)))
-              completeStage()
-            case e: IncompleteXMLValidationException =>
-              emitStage(
-                XMLGroupElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
-                  Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
-              completeStage()
-            case e: ParserValidationError =>
-              emitStage(
-                XMLGroupElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE))
-              )
               completeStage()
             case e: Throwable =>
               throw e
@@ -147,27 +107,22 @@ object EMACParsingStage {
           emit(out, (parsingData, getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd))
         }
 
-        var parsingData = ByteString("")
-        var isCharacterBuffering = false
-        var chunkOffset = 0
-        var chunk = Array[Byte]()
-        var totalProcessedLength = 0
+        private var parsingData = ByteString("")
+        private var isCharacterBuffering = false
 
-        val node = ArrayBuffer[String]()
-        val completedInstructions = mutable.Set[XMLInstruction]()
-        val xmlElements = mutable.Set[XMLGroupElement]()
-        val bufferedText = new StringBuilder
-        val streamBuffer = ArrayBuffer[Byte]()
-        val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
-        val groupings = parentNodes.map(nodes =>
+        private val chunkOffset = 0
+        private val node = ArrayBuffer[String]()
+        private val completedInstructions = mutable.Set[XMLInstruction]()
+        private val xmlElements = mutable.Set[XMLGroupElement]()
+        private val bufferedText = new StringBuilder
+        private val streamBuffer = ArrayBuffer[Byte]()
+        private val groupings = parentNodes.map(nodes =>
           mutable.Map.apply(nodes.map((_, (0, false))): _*))
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
             val event = parser.next()
-            val (start, end) = getBounds(parser)
             event match {
-
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
                 streamBuffer ++= parsingData.slice(chunkOffset, parsingData.length)
 
@@ -192,7 +147,7 @@ object EMACParsingStage {
                     val ele = XMLGroupElement(e.xPath, keys, None, groupedNodes)
                     xmlElements.add(ele)
 
-                  case x =>
+                  case _ =>
                 })
                 if (parser.hasNext) advanceParser()
 
@@ -208,10 +163,10 @@ object EMACParsingStage {
 
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e@XMLExtract(`node`, _) =>
+                    case XMLExtract(`node`, _) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
 
-                    case x =>
+                    case _ =>
                   }
                 })
                 bufferedText.clear()
@@ -221,7 +176,7 @@ object EMACParsingStage {
               case XMLStreamConstants.CHARACTERS =>
                 instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e@XMLExtract(`node`, _) =>
+                    case XMLExtract(`node`, _) =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
                         isCharacterBuffering = true
@@ -233,18 +188,10 @@ object EMACParsingStage {
                 })
                 if (parser.hasNext) advanceParser()
 
-              case x =>
+              case _ =>
                 if (parser.hasNext) advanceParser()
             }
           }
-        }
-
-        private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
-          val start = reader.getLocationInfo.getStartingByteOffset.toInt
-          (
-            if (start == 1) 0 else start - (totalProcessedLength - parsingData.length),
-            reader.getLocationInfo.getEndingByteOffset.toInt - (totalProcessedLength - parsingData.length)
-          )
         }
       }
   }

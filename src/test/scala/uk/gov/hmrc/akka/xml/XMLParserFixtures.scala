@@ -41,11 +41,12 @@ trait XMLParserFixtures {
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
-    def parseToXMLGroupElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
-                           validationMaxSize: Option[Int] = None, parentNodes: Option[Seq[String]] = None) = Flow[ByteString]
-      .via(EMACParsingStage.parser(instructions, validationMaxSize, 10, parentNodes))
-      .via(flowXMLGroupElements)
-      .toMat(collectXMLGroupElements)(Keep.right)
+    def parseToXMLGroupElements(instructions: Set[XMLInstruction],
+                                parentNodes: Option[Seq[String]] = None): Sink[ByteString, Future[Set[XMLGroupElement]]] =
+      Flow[ByteString]
+        .via(EMACParsingStage.parser(instructions, parentNodes))
+        .via(flowXMLGroupElements)
+        .toMat(collectXMLGroupElements)(Keep.right)
 
     def parseToByteString(instructions: Set[XMLInstruction]) = Flow[ByteString]
       .via(MinimumChunk.parser(15))

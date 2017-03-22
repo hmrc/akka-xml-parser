@@ -59,7 +59,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       ByteString("</header></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
+    whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
         XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
@@ -73,7 +73,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
   it should "empty size value when source is empty" in {
     val source = Source.single(ByteString(""))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
-    whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
+    whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set()
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -84,7 +84,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
   it should "retrun NO_VALIDATION_FOUND_FAILURE when no validation was performed till validationMaxSize" in {
     val source = Source.single(ByteString(""))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
-    whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
+    whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set()
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
