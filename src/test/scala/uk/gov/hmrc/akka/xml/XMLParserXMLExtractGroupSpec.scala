@@ -41,8 +41,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
 
@@ -62,9 +61,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLGroupElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_MAX_SIZE)),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
 
@@ -77,10 +74,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val source = Source.single(ByteString(""))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
-      r shouldBe Set(
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "0"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLGroupElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_IS_EMPTY))
-      )
+      r shouldBe Set()
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe ""
@@ -91,10 +85,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val source = Source.single(ByteString(""))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLGroupElements(paths, Some(40)))) { r =>
-      r shouldBe Set(
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "0"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLGroupElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_IS_EMPTY))
-      )
+      r shouldBe Set()
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe ""
@@ -111,8 +102,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
 
@@ -129,8 +119,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "37"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some(""))
       )
     }
 
@@ -200,8 +189,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "41"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some(""))
       )
     }
 
@@ -219,8 +207,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -240,8 +227,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -322,7 +308,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "71"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLGroupElement(Seq("xml", "body", "element"), Map("Attribute" -> "Test"), Some("elementText")
         )
       )
@@ -338,7 +323,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "47"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLGroupElement(Seq("xml"), Map("Attribute2" -> "Test2"), Some(""))
       )
     }
@@ -353,7 +337,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map("Attribute" -> "notTest")))
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r shouldBe Set(XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "74"), Some(CompleteChunkStage.STREAM_SIZE)))
+      r shouldBe Set()
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"
@@ -366,8 +350,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("type" -> "test")))
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r shouldBe Set(XMLGroupElement(Seq("xml"), Map("type" -> "test"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE)))
+      r shouldBe Set(XMLGroupElement(Seq("xml"), Map("type" -> "test"), Some("")))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml type=\"test\"><body><foo>test</foo><bar>test</bar></body></xml>"
@@ -380,8 +363,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")))
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r shouldBe Set(XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "100"), Some(CompleteChunkStage.STREAM_SIZE)))
+      r shouldBe Set(XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\"><body><foo>test</foo><bar>test</bar></body></xml>"
@@ -394,8 +376,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "132"), Some(CompleteChunkStage.STREAM_SIZE)))
+        XMLGroupElement(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<gt:GovTalkMessage xmlns:gt=\"http://www.govtalk.gov.uk/CM/envelope\"><gt:EnvelopeVersion>2.0</gt:EnvelopeVersion></gt:GovTalkMessage>"
@@ -409,8 +390,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some(""))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -432,7 +412,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
         XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLGroupElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
       )
     }
@@ -457,7 +436,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
         XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLGroupElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
     }
@@ -482,8 +460,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
-        XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some(""))
         // We shouldn't see this one - XMLGroupElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
         //XMLGroupElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
@@ -509,7 +486,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(
         XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLGroupElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
         //XMLGroupElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
@@ -557,7 +533,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     val expected = Set(
       XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "939"), Some(CompleteChunkStage.STREAM_SIZE)),
       XMLGroupElement(List("GovTalkMessage"), Map("xmlns" -> "http://www.govtalk"), Some("")),
       XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Function"), Map(), Some("submit")),
       XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Qualifier"), Map(), Some("response")),
@@ -595,8 +570,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     )
 
     val expected = Set(
-      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "881"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some(""))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
@@ -632,8 +606,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     )
 
     val expected = Set(
-      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "851"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600"))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
@@ -670,8 +643,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     )
 
     val expected = Set(
-      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "851"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600"))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
@@ -705,8 +677,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     val expected = Set(
       XMLGroupElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey"), Some("Retry2")),
-      XMLGroupElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey5"), Some("Retry5")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "884"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey5"), Some("Retry5"))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
@@ -746,8 +717,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"), Some(Seq(XMLGroup("Enrolment", 1)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("Enrolment", 2)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"), Some(Seq(XMLGroup("Enrolment", 2)))),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2)))),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2))))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths, parentNodes = Some(Seq("Enrolment"))))) { r =>
@@ -786,8 +756,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA")),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("ServiceName", 2)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321")),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB")),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths, parentNodes = Some(Seq("ServiceName"))))) { r =>
@@ -826,8 +795,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"), Some(Seq(XMLGroup("Key", 2)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "ServiceName"), Map.empty, Some("ExampleSvc2"), Some(Seq(XMLGroup("ServiceName", 2)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"), Some(Seq(XMLGroup("Key", 3)))),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Key", 4)))),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Key", 4))))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths, parentNodes = Some(Seq("Key", "ServiceName"))))) { r =>
@@ -863,8 +831,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 1)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 2)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"),  Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 3)))),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 4)))),
-      XMLGroupElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "840"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 4))))
     )
 
     whenReady(source.runWith(parseToXMLGroupElements(paths, parentNodes = Some(Seq("Enrolment", "Key"))))) { r =>

@@ -43,8 +43,6 @@ trait XMLParserFixtures {
 
     def parseToXMLGroupElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
                            validationMaxSize: Option[Int] = None, parentNodes: Option[Seq[String]] = None) = Flow[ByteString]
-      .via(MinimumChunk.parser(15))
-      .via(CompleteChunkStage.parser(maxSize))
       .via(EMACParsingStage.parser(instructions, validationMaxSize, 10, parentNodes))
       .via(flowXMLGroupElements)
       .toMat(collectXMLGroupElements)(Keep.right)

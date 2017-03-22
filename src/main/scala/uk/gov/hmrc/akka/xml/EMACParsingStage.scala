@@ -41,17 +41,17 @@ object EMACParsingStage {
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
   def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000, parentNodes: Option[Seq[String]] = None)
-  : Flow[ParsingData, (ByteString, Set[XMLGroupElement]), NotUsed] = {
+  : Flow[ByteString, (ByteString, Set[XMLGroupElement]), NotUsed] = {
     Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset, parentNodes))
   }
 
   private class StreamingXmlParser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int, parentNodes: Option[Seq[String]])
-    extends GraphStage[FlowShape[ParsingData, (ByteString, Set[XMLGroupElement])]]
+    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]]
       with EMACStreamHelper
       with ParsingDataFunctions {
-    val in: Inlet[ParsingData] = Inlet("XMLParser.in")
+    val in: Inlet[ByteString] = Inlet("XMLParser.in")
     val out: Outlet[(ByteString, Set[XMLGroupElement])] = Outlet("XMLParser.out")
-    override val shape: FlowShape[ParsingData, (ByteString, Set[XMLGroupElement])] = FlowShape(in, out)
+    override val shape: FlowShape[ByteString, (ByteString, Set[XMLGroupElement])] = FlowShape(in, out)
 
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new GraphStageLogic(shape) {
@@ -81,15 +81,17 @@ object EMACParsingStage {
 
         def processOnPush() = {
           parsingData = grab(in)
+          totalProcessedLength += streamBuffer.length
+          totalProcessedLength += chunk.length
           chunkOffset = 0
           (validationMaxSize) match {
             case Some(validationSize)
-              if parsingData.totalProcessedLength > (validationSize + validationMaxSizeOffset) &&
+              if totalProcessedLength > (validationSize + validationMaxSizeOffset) &&
                 instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_)) =>
               Failure(new NoValidationTagsFoundWithinFirstNBytesException)
             case _ =>
               Try {
-                parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
+                parser.getInputFeeder.feedInput(parsingData.toArray, 0, parsingData.length)
                 advanceParser()
                 push(out, (ByteString(streamBuffer.toArray),
                   getCompletedXMLElements(xmlElements).toSet))
@@ -124,7 +126,7 @@ object EMACParsingStage {
               emitStage(
                 XMLGroupElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
                   Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
-                XMLGroupElement(Nil, Map(STREAM_SIZE -> parsingData.totalProcessedLength.toString), Some(STREAM_SIZE)))
+                XMLGroupElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE)))
               completeStage()
             case e: IncompleteXMLValidationException =>
               emitStage(
@@ -142,13 +144,14 @@ object EMACParsingStage {
         }
 
         private def emitStage(elementsToAdd: XMLGroupElement*) = {
-          emit(out, (parsingData.data, getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd ++ parsingData.extractedElements
-            .map(ele => XMLGroupElement(ele.xPath, ele.attributes, ele.value, None))))
+          emit(out, (parsingData, getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd))
         }
 
-        var parsingData = ParsingData(ByteString(""), Set.empty, 0)
+        var parsingData = ByteString("")
         var isCharacterBuffering = false
         var chunkOffset = 0
+        var chunk = Array[Byte]()
+        var totalProcessedLength = 0
 
         val node = ArrayBuffer[String]()
         val completedInstructions = mutable.Set[XMLInstruction]()
@@ -166,7 +169,7 @@ object EMACParsingStage {
             event match {
 
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                streamBuffer ++= parsingData.data.slice(chunkOffset, parsingData.data.length)
+                streamBuffer ++= parsingData.slice(chunkOffset, parsingData.length)
 
               case XMLStreamConstants.START_ELEMENT =>
                 val localName = parser.getLocalName
@@ -239,8 +242,8 @@ object EMACParsingStage {
         private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
           val start = reader.getLocationInfo.getStartingByteOffset.toInt
           (
-            if (start == 1) 0 else start - (parsingData.totalProcessedLength - parsingData.data.length),
-            reader.getLocationInfo.getEndingByteOffset.toInt - (parsingData.totalProcessedLength - parsingData.data.length)
+            if (start == 1) 0 else start - (totalProcessedLength - parsingData.length),
+            reader.getLocationInfo.getEndingByteOffset.toInt - (totalProcessedLength - parsingData.length)
           )
         }
       }
