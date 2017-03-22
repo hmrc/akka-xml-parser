@@ -29,7 +29,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Success, Try}
 
-object EMACParsingStage {
+object ExtractStage {
   val MALFORMED_STATUS = "Malformed"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
@@ -38,7 +38,7 @@ object EMACParsingStage {
     Flow.fromGraph(new StreamingXmlParser(instructions, parentNodes))
 
   private class StreamingXmlParser(instructions: Set[XMLInstruction], parentNodes: Option[Seq[String]])
-    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]] with EMACStreamHelper {
+    extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]] with ExtractStageHelpers {
     val in: Inlet[ByteString] = Inlet("XMLParser.in")
     val out: Outlet[(ByteString, Set[XMLGroupElement])] = Outlet("XMLParser.out")
     override val shape: FlowShape[ByteString, (ByteString, Set[XMLGroupElement])] = FlowShape(in, out)

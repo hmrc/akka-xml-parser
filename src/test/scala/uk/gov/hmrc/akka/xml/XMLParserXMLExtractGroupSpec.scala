@@ -33,7 +33,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
   import f._
 
-  behavior of "EMACParsingStage#parser"
+  behavior of "ExtractStage#parser"
 
   it should "extract a single value from a valid xml" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))

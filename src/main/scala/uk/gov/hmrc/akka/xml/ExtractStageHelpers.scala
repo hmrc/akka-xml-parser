@@ -20,7 +20,7 @@ import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLStreamReader}
 
 import scala.collection.mutable.ArrayBuffer
 
-trait EMACStreamHelper {
+trait ExtractStageHelpers {
 
   def update(xmlElementsLst: scala.collection.mutable.Set[XMLGroupElement],
              path: ArrayBuffer[String], newValue: Some[String]): Unit = {

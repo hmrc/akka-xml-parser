@@ -44,7 +44,7 @@ trait XMLParserFixtures {
     def parseToXMLGroupElements(instructions: Set[XMLInstruction],
                                 parentNodes: Option[Seq[String]] = None): Sink[ByteString, Future[Set[XMLGroupElement]]] =
       Flow[ByteString]
-        .via(EMACParsingStage.parser(instructions, parentNodes))
+        .via(ExtractStage.parser(instructions, parentNodes))
         .via(flowXMLGroupElements)
         .toMat(collectXMLGroupElements)(Keep.right)
 
