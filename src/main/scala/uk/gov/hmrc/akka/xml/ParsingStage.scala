@@ -207,6 +207,11 @@ object ParsingStage {
                     case e@XMLExtract(`node`, _) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
 
+                    case e@XMLInsertAfter(`node`, elementToInsert) =>
+                      streamBuffer ++= insertBytes(parsingData.data, chunkOffset, end, elementToInsert.getBytes)
+                      completedInstructions += e
+                      chunkOffset = end
+
                     case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
                       val input = getUpdatedElement(e.xPath, e.attributes, e.value)(parser).getBytes
                       streamBuffer ++= insertBytes(parsingData.data, chunkOffset, start, input)
