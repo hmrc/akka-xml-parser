@@ -179,8 +179,6 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
   }
 
 
-
-
   it should "extract a single value when the bytes are split and element is whitespace" in {
     val source = Source(List(ByteString("<xml><header><i"),
       ByteString("d>  "),
@@ -828,9 +826,9 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     )
 
     val expected = Set(
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 1)))),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"),  Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 2)))),
-      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"),  Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 3)))),
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("123456789"), Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 1)))),
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("AA11AA"), Some(Seq(XMLGroup("Enrolment", 1), XMLGroup("Key", 2)))),
+      XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "ExampleRef"), Some("987654321"), Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 3)))),
       XMLGroupElement(List("GovTalkMessage", "Body", "EnrolmentRequest", "Enrolment", "Key"), Map("Type" -> "PostCode"), Some("BB22BB"), Some(Seq(XMLGroup("Enrolment", 2), XMLGroup("Key", 4))))
     )
 
