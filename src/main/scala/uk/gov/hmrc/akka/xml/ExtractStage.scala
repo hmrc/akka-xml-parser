@@ -66,9 +66,9 @@ object ExtractStage {
         })
 
         private def processOnPush() = {
-          parsingData = grab(in)
+          chunk = grab(in)
           Try {
-            parser.getInputFeeder.feedInput(parsingData.toArray, 0, parsingData.length)
+            parser.getInputFeeder.feedInput(chunk.toArray, 0, chunk.length)
             advanceParser()
             push(out, (ByteString(streamBuffer.toArray),
               getCompletedXMLElements(xmlElements).toSet))
@@ -79,11 +79,6 @@ object ExtractStage {
         private def processOnUpstreamFinish() = {
           for {
             _ <- Try(advanceParser())
-            _ <- if ((instructions.count(x => x.isInstanceOf[XMLValidate]) > 0) &&
-              (completedInstructions.count(x => x.isInstanceOf[XMLValidate]) != instructions.count(x => x.isInstanceOf[XMLValidate]))) {
-              Failure(new IncompleteXMLValidationException)
-            }
-            else Success()
           } yield {
             if (node.nonEmpty)
               xmlElements.add(XMLGroupElement(Nil, Map(MALFORMED_STATUS ->
@@ -104,15 +99,14 @@ object ExtractStage {
         }
 
         private def emitStage(elementsToAdd: XMLGroupElement*) = {
-          emit(out, (parsingData, getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd))
+          emit(out, (chunk, getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd))
         }
 
-        private var parsingData = ByteString("")
+        private var chunk = ByteString("")
         private var isCharacterBuffering = false
 
         private val chunkOffset = 0
         private val node = ArrayBuffer[String]()
-        private val completedInstructions = mutable.Set[XMLInstruction]()
         private val xmlElements = mutable.Set[XMLGroupElement]()
         private val bufferedText = new StringBuilder
         private val streamBuffer = ArrayBuffer[Byte]()
@@ -124,7 +118,7 @@ object ExtractStage {
             val event = parser.next()
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                streamBuffer ++= parsingData.slice(chunkOffset, parsingData.length)
+                streamBuffer ++= chunk.slice(chunkOffset, chunk.length)
 
               case XMLStreamConstants.START_ELEMENT =>
                 val localName = parser.getLocalName
@@ -138,7 +132,7 @@ object ExtractStage {
                       .mapValues(_._1)
                 }
                 node += localName
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
+                instructions.foreach(f = (e: XMLInstruction) => e match {
                   case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
                     val groupedNodes = activeGroupings collect {
@@ -149,7 +143,7 @@ object ExtractStage {
 
                   case _ =>
                 })
-                if (parser.hasNext) advanceParser()
+                advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
                 val localName = parser.getLocalName
@@ -161,7 +155,7 @@ object ExtractStage {
                     nodes(localName) = (currentSeq, false)
                 }
 
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
                     case XMLExtract(`node`, _) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
@@ -171,7 +165,7 @@ object ExtractStage {
                 })
                 bufferedText.clear()
                 node -= localName
-                if (parser.hasNext) advanceParser()
+                advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
                 instructions.foreach(f = (e: XMLInstruction) => {
@@ -186,10 +180,9 @@ object ExtractStage {
                     case _ =>
                   }
                 })
-                if (parser.hasNext) advanceParser()
+                advanceParser()
 
-              case _ =>
-                if (parser.hasNext) advanceParser()
+              case _ => advanceParser()
             }
           }
         }
