@@ -175,6 +175,7 @@ object ParsingStage {
                     val keys = getPredicateMatch(parser, e.attributes)
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
+
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
                       case path if path == node.toList =>
@@ -184,21 +185,33 @@ object ParsingStage {
                       case _ =>
                         chunkOffset = end
                     }
+
                   case e: XMLValidate if e.start == node.slice(0, e.start.length) =>
-                    val newBytes = parsingData.data.slice(start, end)
+                    val newBytes = if (node == e.end) ArrayBuffer.empty else parsingData.data.slice(start, end)
                     if (!parser.isEmptyElement) {
                       val ele = validators.get(e) match {
                         case Some(x) => (e, x ++ newBytes)
                         case None => (e, ArrayBuffer.empty ++= newBytes)
                       }
                       validators += ele
+                      validators.foreach {
+                        case (s@XMLValidate(_, `node`, f), testData) =>
+                          f(new String(testData.toArray)).map({
+                            x =>
+                              throw x
+                          })
+                          completedInstructions += e
+
+                        case x =>
+                      }
                     }
+
                   case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
                     streamBuffer ++= extractBytes(parsingData.data, chunkOffset, start)
                     chunkOffset = end
                   case x =>
                 })
-                if (parser.hasNext) advanceParser()
+                advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
@@ -233,13 +246,6 @@ object ParsingStage {
                         case None => throw new IncompleteXMLValidationException
                       }
                       validators += ele
-                      validators.foreach {
-                        case (s@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map(throw _)
-                          completedInstructions += e
-
-                        case x =>
-                      }
 
                     case e: XMLDelete if e.xPath == node.slice(0, e.xPath.length) =>
                       chunkOffset = end
@@ -249,7 +255,7 @@ object ParsingStage {
                 })
                 bufferedText.clear()
                 node -= parser.getLocalName
-                if (parser.hasNext) advanceParser()
+                advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
                 instructions.foreach(f = (e: XMLInstruction) => {
@@ -277,10 +283,24 @@ object ParsingStage {
                     case _ =>
                   }
                 })
-                if (parser.hasNext) advanceParser()
+                advanceParser()
+
+              case XMLStreamConstants.END_DOCUMENT =>
+                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                  validators.foreach {
+                    case (s@XMLValidate(_, _, f), testData) =>
+                      f(new String(testData.toArray)).map({
+                        x =>
+                          throw x
+                      })
+                      completedInstructions += e
+                    case x =>
+                  }
+                })
+                advanceParser()
 
               case x =>
-                if (parser.hasNext) advanceParser()
+                advanceParser()
             }
           }
         }
