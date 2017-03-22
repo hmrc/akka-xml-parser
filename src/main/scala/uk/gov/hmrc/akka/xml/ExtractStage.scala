@@ -70,9 +70,8 @@ object ExtractStage {
           Try {
             parser.getInputFeeder.feedInput(chunk.toArray, 0, chunk.length)
             advanceParser()
-            push(out, (ByteString(streamBuffer.toArray),
+            push(out, (chunk,
               getCompletedXMLElements(xmlElements).toSet))
-            streamBuffer.clear()
           }
         }
 
@@ -105,11 +104,9 @@ object ExtractStage {
         private var chunk = ByteString("")
         private var isCharacterBuffering = false
 
-        private val chunkOffset = 0
         private val node = ArrayBuffer[String]()
         private val xmlElements = mutable.Set[XMLGroupElement]()
         private val bufferedText = new StringBuilder
-        private val streamBuffer = ArrayBuffer[Byte]()
         private val groupings = parentNodes.map(nodes =>
           mutable.Map.apply(nodes.map((_, (0, false))): _*))
 
@@ -118,7 +115,6 @@ object ExtractStage {
             val event = parser.next()
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                streamBuffer ++= chunk.slice(chunkOffset, chunk.length)
 
               case XMLStreamConstants.START_ELEMENT =>
                 val localName = parser.getLocalName
