@@ -196,10 +196,7 @@ object ParsingStage {
                       validators += ele
                       validators.foreach {
                         case (s@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map({
-                            x =>
-                              throw x
-                          })
+                          f(new String(testData.toArray)).map(throw _)
                           completedInstructions += e
 
                         case x =>
@@ -286,20 +283,19 @@ object ParsingStage {
                 advanceParser()
 
               case XMLStreamConstants.END_DOCUMENT =>
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                for {
+                  i <- instructions.diff(completedInstructions).collect { case e: XMLValidate => e }
+                } yield {
                   validators.foreach {
                     case (s@XMLValidate(_, _, f), testData) =>
-                      f(new String(testData.toArray)).map({
-                        x =>
-                          throw x
-                      })
-                      completedInstructions += e
-                    case x =>
+                      f(new String(testData.toArray)).map(throw _)
+                      completedInstructions += i
+                    case _ =>
                   }
-                })
+                }
                 advanceParser()
 
-              case x =>
+              case _ =>
                 advanceParser()
             }
           }

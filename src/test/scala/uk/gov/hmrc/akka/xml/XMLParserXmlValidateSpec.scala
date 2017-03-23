@@ -264,4 +264,27 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
+  it should "validate over multiple chunks - size within limits 1" in {
+    val source = Source.single(
+      ByteString("<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"))
+    val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<root><foo>test</foo>")
+      None
+    else Some(new ParserValidationError {})
+    val paths = Set[XMLInstruction](
+      XMLExtract(Seq("xml", "root", "foo")),
+      XMLExtract(Seq("xml", "root", "taz")),
+      XMLValidate(Seq("xml", "root"), Seq("xml", "root", "body"), validatingFunction)
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+      r shouldBe Set(
+        XMLElement(List("xml", "root", "foo"), Map(),Some("test")),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"
+    }
+  }
+
 }
