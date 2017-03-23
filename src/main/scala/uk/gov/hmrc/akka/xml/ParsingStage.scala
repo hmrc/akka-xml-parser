@@ -43,7 +43,7 @@ object ParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000)
+  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 1000)
   : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
     Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset))
   }
@@ -196,10 +196,7 @@ object ParsingStage {
                       validators += ele
                       validators.foreach {
                         case (s@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map({
-                            x =>
-                              throw x
-                          })
+                          f(new String(testData.toArray)).map(throw _)
                           completedInstructions += e
 
                         case x =>
@@ -286,20 +283,19 @@ object ParsingStage {
                 advanceParser()
 
               case XMLStreamConstants.END_DOCUMENT =>
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                for {
+                  i <- instructions.diff(completedInstructions).collect { case e: XMLValidate => e }
+                } yield {
                   validators.foreach {
                     case (s@XMLValidate(_, _, f), testData) =>
-                      f(new String(testData.toArray)).map({
-                        x =>
-                          throw x
-                      })
-                      completedInstructions += e
-                    case x =>
+                      f(new String(testData.toArray)).map(throw _)
+                      completedInstructions += i
+                    case _ =>
                   }
-                })
+                }
                 advanceParser()
 
-              case x =>
+              case _ =>
                 advanceParser()
             }
           }
