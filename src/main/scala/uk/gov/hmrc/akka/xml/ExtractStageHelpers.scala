@@ -1,0 +1,74 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.gov.hmrc.akka.xml
+
+import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLStreamReader}
+
+import scala.collection.mutable.ArrayBuffer
+
+trait ExtractStageHelpers {
+
+  def update(xmlElementsLst: scala.collection.mutable.Set[XMLGroupElement],
+             path: ArrayBuffer[String], newValue: Some[String]): Unit = {
+    val elementsWithoutAnyValueForGivenPath = xmlElementsLst.collect {
+      case e: XMLGroupElement if (e.xPath == path.toList) && e.value.isEmpty => e
+    }
+
+    elementsWithoutAnyValueForGivenPath.map((ele: XMLGroupElement) => {
+      xmlElementsLst.remove(ele)
+      val newElement = ele.copy(value = newValue)
+      xmlElementsLst.add(newElement)
+    })
+  }
+
+  def getCompletedXMLElements(xmlElementsLst: scala.collection.mutable.Set[XMLGroupElement]):
+  scala.collection.mutable.Set[XMLGroupElement] = {
+    val completedElements = xmlElementsLst.collect {
+      case e if !(e.xPath.nonEmpty && e.value.isEmpty) => e
+    }
+
+    completedElements.foreach({
+      xmlElementsLst -= _
+    })
+
+    completedElements
+  }
+
+  def getPredicateMatch(parser: AsyncXMLStreamReader[AsyncByteArrayFeeder], predicates: Map[String, String]): Map[String, String] = {
+    val XMLNS = "xmlns"
+    val collection = scala.collection.mutable.Map[String, String]()
+
+    if (parser.getNamespaceCount > 0 && predicates.keySet(XMLNS)) collection.+=(XMLNS -> parser.getNamespaceURI(0))
+    (0 until parser.getNamespaceCount).map { i =>
+      val ns = if (parser.getNamespacePrefix(i).length == 0) XMLNS else XMLNS + ":" + parser.getNamespacePrefix(i)
+      if (predicates.keySet(ns)) {
+        collection.+=(ns -> parser.getNamespaceURI(i))
+      }
+    }
+
+    (0 until parser.getAttributeCount).map(i =>
+
+      if (predicates.isEmpty) {
+        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
+      } else if (predicates.keySet(parser.getAttributeLocalName(i)) || predicates.keySet(
+        parser.getAttributePrefix(i) + ":" + parser.getAttributeLocalName(i))) {
+        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
+      }
+    )
+    collection
+  }.toMap
+}
