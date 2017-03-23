@@ -43,7 +43,7 @@ object ParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 10000)
+  def parser(instructions: Set[XMLInstruction], validationMaxSize: Option[Int] = None, validationMaxSizeOffset: Int = 1000)
   : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
     Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize, validationMaxSizeOffset))
   }

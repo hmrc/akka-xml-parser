@@ -264,7 +264,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-  it should "validate over multiple chunks - size within limits 1" in {
+  it should "validate over multiple chunks - making sure that the END_DOCUMENT event is not calling the validating function multiple times" in {
     val source = Source.single(
       ByteString("<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<root><foo>test</foo>")
