@@ -30,3 +30,5 @@ case class XMLValidate(start: Seq[String], end: Seq[String], f: String => Option
 case class XMLDelete(xPath: Seq[String]) extends XMLInstruction
 
 case class XMLInsertAfter(xPath: Seq[String], elementToInsert: String) extends XMLInstruction
+
+case class XMLTransform(startPath: Seq[String], endPath: Seq[String], f: String => String) extends XMLInstruction
