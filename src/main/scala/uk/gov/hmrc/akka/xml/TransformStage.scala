@@ -1,3 +1,19 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package uk.gov.hmrc.akka.xml
 
 import javax.xml.stream.XMLStreamConstants
@@ -11,6 +27,7 @@ import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -18,17 +35,18 @@ import scala.collection.mutable.ArrayBuffer
   */
 object TransformStage {
   def parser(instructions: Set[XMLInstruction])
-  : Flow[ParsingData, (ByteString, Set[XMLElement]), NotUsed] = {
+  : Flow[ParsingData, ByteString, NotUsed] = {
     Flow.fromGraph(new StreamingXmlParser(instructions))
   }
 
   private class StreamingXmlParser(instructions: Set[XMLInstruction])
-    extends GraphStage[FlowShape[ByteString, ByteString]]
+    extends GraphStage[FlowShape[ParsingData, ByteString]]
       with StreamHelper
       with ParsingDataFunctions {
-    val in: Inlet[ByteString] = Inlet("Transform.in")
+    val in: Inlet[ParsingData] = Inlet("Transform.in")
     val out: Outlet[ByteString] = Outlet("Transform.out")
-    override val shape: FlowShape[ByteString, ByteString] = FlowShape(in, out)
+
+    override val shape: FlowShape[ParsingData, ByteString] = FlowShape(in, out)
 
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new GraphStageLogic(shape) {
@@ -37,7 +55,9 @@ object TransformStage {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             parsingData = grab(in)
-            parser.getInputFeeder.feedInput(parsingData.toArray, 0, parsingData.length)
+            chunkOffset = 0
+
+            parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
             advanceParser()
             emitChunk()
           }
@@ -55,13 +75,22 @@ object TransformStage {
         })
 
         private def emitChunk(): Unit = {
-
+          if(hasTransformHappened){
+            println(new String(streamBuffer.toArray))
+            push(out, (ByteString(streamBuffer.toArray)))
+            streamBuffer.clear()
+          }
+          else
+            push(out, (ByteString("")))
         }
 
         val node = ArrayBuffer[String]()
         val streamBuffer = ArrayBuffer[Byte]()
-        var parsingData = ByteString("")
-        var validating = true
+        val completedInstructions = mutable.Set[XMLInstruction]()
+
+
+        var parsingData = ParsingData(ByteString(""), Set.empty, 0)
+        var hasTransformHappened = false
         var chunkOffset = 0
 
 
@@ -71,33 +100,63 @@ object TransformStage {
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
             val event = parser.next()
-            val (start, end) = getBounds(parser)
+            val (elementStart, elementEnd) = getBounds(parser)
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                streamBuffer ++= parsingData.slice(chunkOffset, parsingData.length)
+                if(hasTransformHappened)
+                streamBuffer ++= parsingData.data.slice(chunkOffset, parsingData.data.length)
+                chunkOffset = elementEnd
 
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
-                instructions.foreach(f = (e: XMLInstruction) => e match {
-                  case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) && validating =>
-                    val newBytes = parsingData.slice(start, end)
+                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
+                  case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) =>
+                    val newBytes = parsingData.data.slice(elementStart, elementEnd)
                     streamBuffer ++= newBytes
+
+                  case e: XMLRemoveNamespacePrefix if (node == e.xPath && e.removeForStartTag) => {
+                    val prefix = Option(parser.getPrefix) match {
+                      case Some(pre) if pre.length > 0 =>
+                        println(pre)
+                        streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
+                        streamBuffer ++= ByteString("<")
+                        streamBuffer ++= parsingData.data.slice(elementStart + 2 + pre.length , elementEnd)
+                        chunkOffset = elementEnd
+                      case a => println(a)
+                    }
+                  }
 
                   case x =>
                 })
                 advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
-                instructions.foreach(f = (e: XMLInstruction) => {
+                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) && validating =>
-                      val newBytes = parsingData.slice(start, end)
+                    case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) =>
+                      val newBytes = parsingData.data.slice(elementStart, elementEnd)
                       streamBuffer ++= newBytes
                       if (node == e.endPath) {
                         val transformedData: String = e.f(new String(streamBuffer.toArray))
-                        validating = false
-                        emit(out, ByteString(transformedData))
+                        hasTransformHappened = true
+                        streamBuffer.clear()
+                        streamBuffer ++= ByteString(transformedData)
+                        chunkOffset = elementEnd
+                        completedInstructions += e
                       }
+
+                    case e: XMLRemoveNamespacePrefix if (node == e.xPath && e.removeForEndTag) => {
+                      val prefix = Option(parser.getPrefix) match {
+                        case Some(pre) if pre.length > 0 =>
+                          println(pre)
+                          streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
+                          streamBuffer ++= ByteString("</")
+                          streamBuffer ++= parsingData.data.slice(elementStart + 3 + pre.length , elementEnd)
+                          chunkOffset = elementEnd
+
+                        case a => println(a)
+                      }
+                    }
 
                     case x =>
                   }
@@ -106,10 +165,14 @@ object TransformStage {
                 advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
-                instructions.foreach(f = (e: XMLInstruction) => {
+                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) && validating =>
-                      val newBytes = parsingData.slice(start, end)
+                    case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) =>
+                      val newBytes = parsingData.data.slice(elementStart, elementEnd)
+                      streamBuffer ++= newBytes
+
+                    case e: XMLRemoveNamespacePrefix if (node == e.xPath) =>
+                      val newBytes = parsingData.data.slice(elementStart, elementEnd)
                       streamBuffer ++= newBytes
 
                     case _ =>
@@ -124,9 +187,9 @@ object TransformStage {
         }
 
         private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
-          val start = reader.getLocationInfo.getStartingByteOffset.toInt
+          val staxStart = reader.getLocationInfo.getStartingByteOffset.toInt
           (
-            if (start == 1) 0 else start - (parsingData.totalProcessedLength - parsingData.data.length),
+            if (staxStart == 1) 0 else staxStart - (parsingData.totalProcessedLength - parsingData.data.length),
             reader.getLocationInfo.getEndingByteOffset.toInt - (parsingData.totalProcessedLength - parsingData.data.length)
             )
         }
