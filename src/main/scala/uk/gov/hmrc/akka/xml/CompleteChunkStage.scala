@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.akka.xml
 
+import javax.xml.stream.XMLStreamConstants
+
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
@@ -25,6 +27,7 @@ import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Try}
 
@@ -105,9 +108,18 @@ object CompleteChunkStage {
           for {
             _ <- Try(advanceParser())
           } yield {
-            emitStage(
-              XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
-            )(ByteString(streamBuffer.toArray))
+            if (tagsCounter != 0)
+              emitStage(
+                XMLElement(Nil, Map(MALFORMED_STATUS -> XML_START_END_TAGS_MISMATCH), Some(MALFORMED_STATUS)),
+                XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(streamBuffer.toArray))
+
+            else {
+              emitStage(
+                XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
+              )(ByteString(streamBuffer.toArray))
+            }
+
           }
         }
 
@@ -144,6 +156,9 @@ object CompleteChunkStage {
         var totalProcessedLength = 0
         val streamBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
+        val xmlElements = mutable.Set[XMLElement]()
+
+        var tagsCounter = 0
 
         @tailrec private def advanceParser(): Unit = {
           if (parser.hasNext) {
@@ -153,6 +168,12 @@ object CompleteChunkStage {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
                 streamBuffer ++= chunk.slice(0, start)
                 incompleteBytes ++= chunk.slice(start, chunk.length)
+              case XMLStreamConstants.START_ELEMENT =>
+                tagsCounter += 1
+                advanceParser()
+              case XMLStreamConstants.END_ELEMENT =>
+                tagsCounter -= 1
+                advanceParser()
               case x =>
                 if (parser.hasNext) advanceParser()
             }
