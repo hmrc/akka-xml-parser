@@ -222,7 +222,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "16"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLElement(Nil, Map(ParsingStage.MALFORMED_STATUS ->
-          (ParsingStage.XML_START_END_TAGS_MISMATCH + "foo, bar")), Some(ParsingStage.MALFORMED_STATUS))
+          (ParsingStage.XML_START_END_TAGS_MISMATCH)), Some(ParsingStage.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -239,7 +239,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "39"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
         XMLElement(Nil, Map(ParsingStage.MALFORMED_STATUS ->
-          (ParsingStage.XML_START_END_TAGS_MISMATCH + "xml")), Some(ParsingStage.MALFORMED_STATUS))
+          (ParsingStage.XML_START_END_TAGS_MISMATCH)), Some(ParsingStage.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>

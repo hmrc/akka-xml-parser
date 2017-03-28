@@ -92,27 +92,30 @@ object ParsingStage {
               Failure(new NoValidationTagsFoundWithinFirstNBytesException)
             case _ =>
               Try {
-                parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
-                advanceParser()
-                push(out, (ByteString(streamBuffer.toArray),
-                  getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
-                streamBuffer.clear()
+                if (continueParsing) {
+                  parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
+                  advanceParser()
+                  push(out, (ByteString(streamBuffer.toArray),
+                    getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
+                  streamBuffer.clear()
+                } else {
+                  push(out, (parsingData.data, Set.empty[XMLElement]))
+                }
               }
           }
         }
 
         def processOnUpstreamFinish(): Try[Unit] = {
           for {
-            _ <- Try(advanceParser())
+            _ <- Try {
+              advanceParser()
+            }
             _ <- if ((instructions.count(x => x.isInstanceOf[XMLValidate]) > 0) &&
               (completedInstructions.count(x => x.isInstanceOf[XMLValidate]) != instructions.count(x => x.isInstanceOf[XMLValidate]))) {
               Failure(new IncompleteXMLValidationException)
             }
             else Success()
           } yield {
-            if (node.nonEmpty)
-              xmlElements.add(XMLElement(Nil, Map(MALFORMED_STATUS ->
-                (XML_START_END_TAGS_MISMATCH + node.mkString(", "))), Some(MALFORMED_STATUS)))
             emitStage()
           }
         }
@@ -151,6 +154,7 @@ object ParsingStage {
         var parsingData = ParsingData(ByteString(""), Set.empty, 0)
         var isCharacterBuffering = false
         var chunkOffset = 0
+        var continueParsing = true
 
         val node = ArrayBuffer[String]()
         val completedInstructions = mutable.Set[XMLInstruction]()
@@ -197,6 +201,7 @@ object ParsingStage {
                       validators.foreach {
                         case (s@XMLValidate(_, `node`, f), testData) =>
                           f(new String(testData.toArray)).map(throw _)
+                          continueParsing = false
                           completedInstructions += e
 
                         case x =>
