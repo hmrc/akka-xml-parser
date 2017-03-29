@@ -75,7 +75,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
 
   it should "validate successfully the specified data against a supplied function" in {
-    val source = Source.single(ByteString("<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"))
+    val source = Source.single(ByteString("ï»¿<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) =>
       if (string == "<body><foo>test</foo><bar>test</bar>") None else Some(new ParserValidationError {})
     val paths = Set[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "test"), validatingFunction))
