@@ -39,7 +39,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
   behavior of "CompleteChunkStage#parser"
 
   it should "extract a single value from a valid xml" in {
-    val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
+    val source = Source.single(ByteString("ï»¿<xml><header><id>12345</id></header></xml>"))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -50,23 +50,21 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
   }
 
   it should "extract max size value when the bytes are split" in {
-    val source = Source(List(ByteString("<xml><header><i"),
+    val source = Source(List(ByteString("ï»¿<xml><header><i"),
       ByteString("d>12"),
       ByteString("3"),
       ByteString("45</id>"),
       ByteString("</header></xml>")))
     val paths = Set[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
 
-    whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, Some(50)))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_MAX_SIZE)),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
