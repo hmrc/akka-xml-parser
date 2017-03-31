@@ -39,7 +39,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
   it should "insert a given element after the provided xPath" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
-    val instruction = Set[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
+    val instruction = Seq[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
@@ -54,7 +54,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
   it should "insert a given element after the provided xPath - with chunking at start tag" in {
     val source = Source(List(ByteString("<xml><header><i"),ByteString("d>12345</id></header></xml>")))
-    val instruction = Set[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
+    val instruction = Seq[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
@@ -69,7 +69,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
   it should "insert a given element after the provided xPath - with chunking at end tag" in {
     val source = Source(List(ByteString("<xml><header><id>12345</i"),ByteString("d></header></xml>")))
-    val instruction = Set[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
+    val instruction = Seq[XMLInstruction](XMLInsertAfter(Seq("xml", "header", "id"), "<hello>world</hello>"))
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
@@ -84,7 +84,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
   it should "insert a given element after the provided xPath and delete if already present" in {
     val source = Source(List(ByteString("<xml><header><id>12345</i"),ByteString("d><hello>old world</hello></header></xml>")))
-    val instruction = Set[XMLInstruction](
+    val instruction = Seq[XMLInstruction](
       XMLInsertAfter(Seq("xml", "header", "id"), "<hello>new world</hello>"),
       XMLDelete(Seq("xml", "header", "hello"))
     )
@@ -102,7 +102,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
   it should "insert a given element after the provided xPath and donot delete anything if not present" in {
     val source = Source(List(ByteString("<xml><header><id>12345</i"),ByteString("d></header></xml>")))
-    val instruction = Set[XMLInstruction](
+    val instruction = Seq[XMLInstruction](
       XMLInsertAfter(Seq("xml", "header", "id"), "<hello>new world</hello>"),
       XMLDelete(Seq("xml", "header", "hello"))
     )
