@@ -40,7 +40,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "delete a element from a valid xml when xml is in single chunk" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -55,7 +55,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "delete a element from a valid xml when xml is in two chunk - text is divided" in {
     val source = Source(List(ByteString("<xml><header><id>12"), ByteString("345</id></header></xml>")))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -70,7 +70,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "delete a element from a valid xml when xml is in two chunk - opening tag is divided" in {
     val source = Source(List(ByteString("<xml><header><i"), ByteString("d>12345</id></header></xml>")))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -85,7 +85,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "delete a element from a valid xml when xml is in two chunk - closing tag is divided" in {
     val source = Source(List(ByteString("<xml><header><id>12345</i"), ByteString("d></header></xml>")))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -101,7 +101,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
   it should "delete a multilevel element in multiple chunks" in {
     val source = Source(List(ByteString("<xml><header><content><foo>foo</"), ByteString("foo><bar>bar</bar></content>"),
       ByteString("</header></xml>")))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "content")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "content")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -117,7 +117,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
   it should "ignore delete if no delete tags are found" in {
     val source = Source(List(ByteString("<xml><header><content><foo>foo</"), ByteString("foo><bar>bar</bar></content>"),
       ByteString("</header></xml>")))
-    val paths = Set[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
+    val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
@@ -133,7 +133,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert an element and delete an element" in {
     val source = Source.single(ByteString("<xml><header></header><body><title>hello</title></body></xml>"))
-    val instructions = Set[XMLInstruction](
+    val instructions = Seq[XMLInstruction](
       XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
@@ -144,7 +144,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert an element and delete an element - multiple chunks" in {
     val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
-    val instructions = Set[XMLInstruction](
+    val instructions = Seq[XMLInstruction](
       XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 

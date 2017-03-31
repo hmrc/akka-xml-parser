@@ -33,7 +33,7 @@ trait XMLParserFixtures {
     implicit val system = ActorSystem("XMLParser")
     implicit val mat = ActorMaterializer()
 
-    def parseToXMLElements(instructions: Set[XMLInstruction], maxSize: Option[Int] = None,
+    def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None,
                            validationMaxSize: Option[Int] = None) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser(maxSize))
@@ -48,14 +48,14 @@ trait XMLParserFixtures {
         .via(flowXMLGroupElements)
         .toMat(collectXMLGroupElements)(Keep.right)
 
-    def parseToByteString(instructions: Set[XMLInstruction]) = Flow[ByteString]
+    def parseToByteString(instructions: Seq[XMLInstruction]) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser())
       .via(ParsingStage.parser(instructions))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
-    def parseToPrint(instructions: Set[XMLInstruction]) = Flow[ByteString]
+    def parseToPrint(instructions: Seq[XMLInstruction]) = Flow[ByteString]
       .via(CompleteChunkStage.parser())
       .via(ParsingStage.parser(instructions))
       .via(flowByteStringPrint)
