@@ -54,8 +54,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
-  it should "extract max size value when the bytes are split" in {
-    val source = Source(List(ByteString("ï»¿<xml><header><i"),
+  it should "extract max size value when the bytes are split - xml starts with illegal texts" in {
+    val source = Source(List(ByteString("11111111<xml><header><i"),
       ByteString("d>12"),
       ByteString("3"),
       ByteString("45</id>"),

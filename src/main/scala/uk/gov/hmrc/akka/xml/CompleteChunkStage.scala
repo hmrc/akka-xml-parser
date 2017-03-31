@@ -45,8 +45,7 @@ object CompleteChunkStage {
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
-  val BOM_CHARACTERS = "ï»¿"
-  val BOM_CHARACTERS_BYTE_LENGTH = 6
+  val OPENING_CHEVRON = "<"
 
   def parser(maxSize: Option[Int] = None):
   Flow[ByteString, ParsingData, NotUsed] = {
@@ -87,7 +86,20 @@ object CompleteChunkStage {
         })
 
         def processOnPush() = {
-          chunk = grab(in).toArray
+          val pushedData = grab(in)
+          if (isFirstChunk && pushedData.length > 0) {
+            val data = pushedData.utf8String
+            chunk = if (data.contains(OPENING_CHEVRON))
+              ByteString(data.substring(data.indexOf(OPENING_CHEVRON))).toArray
+            else pushedData.toArray
+
+            parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+            isFirstChunk = false
+          } else {
+            chunk = pushedData.toArray
+            parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
+          }
+
           totalProcessedLength += streamBuffer.length
           totalProcessedLength += chunk.length
           (maxSize) match {
@@ -95,19 +107,6 @@ object CompleteChunkStage {
             case Some(size) if totalProcessedLength > size => Failure(MaxSizeError())
             case _ =>
               Try {
-                if (isFirstChunk) {
-                  val data = new String(chunk)
-                  if (data.startsWith(BOM_CHARACTERS)) {
-                    chunk = chunk.slice(BOM_CHARACTERS_BYTE_LENGTH, chunk.length)
-                    totalProcessedLength -= BOM_CHARACTERS_BYTE_LENGTH
-                    parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
-                  } else {
-                    parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
-                  }
-                  isFirstChunk = false
-                } else {
-                  parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
-                }
                 advanceParser()
                 totalProcessedLength -= incompleteBytes.length
                 push(out, ParsingData(ByteString(streamBuffer.toArray), Set.empty, totalProcessedLength))
