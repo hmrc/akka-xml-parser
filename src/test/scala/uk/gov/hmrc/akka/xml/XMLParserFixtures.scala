@@ -48,9 +48,10 @@ trait XMLParserFixtures {
         .via(flowXMLGroupElements)
         .toMat(collectXMLGroupElements)(Keep.right)
 
-    def parseToByteString(instructions: Seq[XMLInstruction]) = Flow[ByteString]
+    def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false)
+    = Flow[ByteString]
       .via(MinimumChunk.parser(15))
-      .via(CompleteChunkStage.parser())
+      .via(CompleteChunkStage.parser(None, insertPrologueIfNotPresent))
       .via(ParsingStage.parser(instructions))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)

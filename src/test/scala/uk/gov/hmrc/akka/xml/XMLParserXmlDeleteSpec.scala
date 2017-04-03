@@ -37,19 +37,18 @@ class XMLParserXmlDeleteSpec extends FlatSpec
   import f._
 
   behavior of "CompleteChunkStage#parser"
-
   it should "delete a element from a valid xml when xml is in single chunk" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
     val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
+      r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
 
@@ -59,12 +58,12 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
+      r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
 
@@ -74,12 +73,12 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
+      r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
 
@@ -89,12 +88,12 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
+      r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
 
@@ -105,12 +104,12 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "96"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
+      r.utf8String shouldBe "<xml><header></header></xml>"
     }
   }
 
@@ -121,12 +120,12 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "96"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><content><foo>foo</foo><bar>bar</bar></content></header></xml>"
+      r.utf8String shouldBe "<xml><header><content><foo>foo</foo><bar>bar</bar></content></header></xml>"
     }
   }
 
@@ -138,7 +137,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
 
@@ -149,18 +148,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header><body></body></xml>"
-    }
-  }
-
-  it should "insert a prolog in first chunk" in {
-    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
-    val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
-      XMLDelete(Seq("xml", "body", "title")))
-
-    whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+      r.utf8String shouldBe "<xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
 
@@ -175,6 +163,27 @@ class XMLParserXmlDeleteSpec extends FlatSpec
     }
   }
 
+  it should "donot insert a prolog in first chunk if already exists even if flag is set" in {
+    val source = Source(List(ByteString("<?xml version=\"1.1\"?><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val instructions = Seq[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+      r.utf8String shouldBe "<?xml version=\"1.1\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
+
+  it should "insert a prolog in first chunk" in {
+    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val instructions = Seq[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
 
   it should "insert a prolog in first chunk before comments" in {
     val source = Source(List(ByteString("<!-- Comments --><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
@@ -182,7 +191,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
-    whenReady(source.runWith(parseToByteString(instructions))) { r =>
+    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
       r.utf8String shouldBe "<?xml version=\"1.0\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
