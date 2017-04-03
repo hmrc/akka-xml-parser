@@ -43,12 +43,12 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(instruction))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id><hello>world</hello></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><hello>world</hello></header></xml>"
     }
   }
 
@@ -58,12 +58,12 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(instruction))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id><hello>world</hello></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><hello>world</hello></header></xml>"
     }
   }
 
@@ -73,12 +73,12 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(instruction))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id><hello>world</hello></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><hello>world</hello></header></xml>"
     }
   }
 
@@ -91,12 +91,12 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "87"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(instruction))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id><hello>new world</hello></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><hello>new world</hello></header></xml>"
     }
   }
 
@@ -109,12 +109,12 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "63"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(instruction))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id><hello>new world</hello></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><hello>new world</hello></header></xml>"
     }
   }
 }

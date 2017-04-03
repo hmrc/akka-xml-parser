@@ -46,7 +46,7 @@ class XMLParserXmlUpdateSpec
   it should "update an element where there is an XMLUpsert instruction and the element exists at the expected xPath" in {
     val source = Source.single(ByteString("<xml><header><foo>foo123</foo></header></xml>"))
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
-    val expected = "<xml><header><foo>bar</foo></header></xml>"
+    val expected = "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -58,7 +58,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -67,7 +67,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -76,7 +76,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -85,7 +85,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("barbar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>barbar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>barbar</foo></header></xml>"
     }
 
   }
@@ -95,7 +95,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -106,7 +106,7 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo><bar>bar</bar></foo></header></xml>"
     }
   }
 
@@ -120,7 +120,7 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo><bar>bar</bar></foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo><bar>bar</bar></foo></header></xml>"
     }
   }
 
@@ -129,7 +129,7 @@ class XMLParserXmlUpdateSpec
       ByteString("r><foo"), ByteString(">fo111o</fo"), ByteString("o></header"), ByteString("></xml>")))
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -138,7 +138,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header><foo>bar</foo></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header></xml>"
     }
   }
 
@@ -147,7 +147,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](XMLUpdate(Seq("xml", "header", "foo"), Some("bar")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      r.utf8String shouldBe "<xml><header></header></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header></header></xml>"
     }
   }
   //TODO: Check if we need to program for this scenario with Rob
@@ -185,7 +185,7 @@ class XMLParserXmlUpdateSpec
   it should "update an existing element with new attributes when they are specified" in {
     val source = Source.single(ByteString("<xml><bar>bar</bar></xml>"))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), Map("attribute" -> "value")))
-    val expected = "<xml><bar attribute=\"value\">foo</bar></xml>"
+    val expected = "<?xml version=\"1.0\"?><xml><bar attribute=\"value\">foo</bar></xml>"
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -196,7 +196,7 @@ class XMLParserXmlUpdateSpec
     val source = Source.single(ByteString("<xml></xml>"))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), Map("attribute" -> "value"), isUpsert = true))
 
-    val expected = "<xml><bar attribute=\"value\">foo</bar></xml>"
+    val expected = "<?xml version=\"1.0\"?><xml><bar attribute=\"value\">foo</bar></xml>"
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -207,7 +207,7 @@ class XMLParserXmlUpdateSpec
 
     val source = Source.single(ByteString("<xml><bar>bar</bar></xml>"))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), Map("attribute" -> "value", "attribute2" -> "value2")))
-    val expected = "<xml><bar attribute=\"value\" attribute2=\"value2\">foo</bar></xml>".getBytes
+    val expected = "<?xml version=\"1.0\"?><xml><bar attribute=\"value\" attribute2=\"value2\">foo</bar></xml>".getBytes
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe new String(expected)
@@ -219,7 +219,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](
       XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""), isUpsert = true)
     )
-    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+    val expected = """<?xml version="1.0"?><xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -231,7 +231,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](
       XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""))
     )
-    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+    val expected = """<?xml version="1.0"?><xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -243,7 +243,7 @@ class XMLParserXmlUpdateSpec
     val instructions = Seq[XMLInstruction](
       XMLUpdate(XPath("xml/foo/one"), Some("""<two attribute="value">two</two>"""))
     )
-    val expected = """<xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
+    val expected = """<?xml version="1.0"?><xml><foo><bar>bar</bar><one><two attribute="value">two</two></one></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -256,7 +256,7 @@ class XMLParserXmlUpdateSpec
       XMLUpdate(XPath("xml/foo/one"), Some("one"), isUpsert = true),
       XMLUpdate(XPath("xml/foo/two"), Some("two"), isUpsert = true)
     )
-    val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
+    val expected = """<?xml version="1.0"?><xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -270,7 +270,7 @@ class XMLParserXmlUpdateSpec
       XMLUpdate(XPath("xml/foo/one"), Some("one")),
       XMLUpdate(XPath("xml/foo/two"), Some("two"))
     )
-    val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
+    val expected = """<?xml version="1.0"?><xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
 
@@ -281,7 +281,7 @@ class XMLParserXmlUpdateSpec
   it should "insert elements with namespaces" in {
     val source = Source.single(ByteString("""<ns:xml xmlns:ns="test"></ns:xml>"""))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
-    val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
+    val expected = "<?xml version=\"1.0\"?><ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
@@ -293,7 +293,7 @@ class XMLParserXmlUpdateSpec
       ByteString("""<ns:xml xml"""),
       ByteString("""ns:ns="test"><ns:bar/></ns:xml>""")))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
-    val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
+    val expected = "<?xml version=\"1.0\"?><ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
     }
@@ -304,7 +304,7 @@ class XMLParserXmlUpdateSpec
       ByteString("""<ns:xml xml"""),
       ByteString("""ns:ns="test"></ns:xml>""")))
     val instructions = Seq[XMLInstruction](XMLUpdate(XPath("xml/bar"), Some("foo"), isUpsert = true))
-    val expected = "<ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
+    val expected = "<?xml version=\"1.0\"?><ns:xml xmlns:ns=\"test\"><ns:bar>foo</ns:bar></ns:xml>"
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
       r.utf8String shouldBe expected
     }

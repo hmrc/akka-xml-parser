@@ -81,11 +81,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "test"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "67")
+      r shouldBe Set(XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "88")
         , Some(CompleteChunkStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"
     }
   }
 
@@ -109,11 +109,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "70"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "91"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body><test>foo</test></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><foo>test</foo><bar>test</bar></body><test>foo</test></xml>"
     }
   }
 
@@ -129,7 +129,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><fo123o>test</fo123o><bar>test</bar></body></xml>"
     }
   }
 
@@ -143,11 +143,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "98"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><fo123o>test</fo123o><bar>test</bar></body><test>test</test></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><fo123o>test</fo123o><bar>test</bar></body><test>test</test></xml>"
     }
   }
 
@@ -172,7 +172,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, None, Some(5)))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "16"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "37"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
   }
@@ -195,7 +195,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "45"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
   }
@@ -207,11 +207,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "38"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "59"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><foo>foo</foo></body></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><foo>foo</foo></body></xml>"
     }
   }
 
@@ -220,13 +220,13 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(XPath("foo")))
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "16"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "37"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLElement(Nil, Map(ParsingStage.MALFORMED_STATUS ->
           (ParsingStage.XML_START_END_TAGS_MISMATCH)), Some(ParsingStage.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<foo>foo<bar>bar"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><foo>foo<bar>bar"
     }
   }
 
@@ -236,14 +236,14 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(XPath("xml/foo")))
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "39"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE)),
         XMLElement(List("xml", "foo"), Map.empty, Some("bar")),
         XMLElement(Nil, Map(ParsingStage.MALFORMED_STATUS ->
           (ParsingStage.XML_START_END_TAGS_MISMATCH)), Some(ParsingStage.MALFORMED_STATUS))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><foo>bar</foo><hello>world</hello>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><foo>bar</foo><hello>world</hello>"
     }
   }
   it should "validate over multiple chunks - size within limits" in {
@@ -256,11 +256,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None, Some(50)))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "98"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar></body><footer>footer</footer></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><foo>test</foo><bar>test</bar></body><footer>footer</footer></xml>"
     }
   }
 
@@ -279,11 +279,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
       r shouldBe Set(
         XMLElement(List("xml", "root", "foo"), Map(),Some("test")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "87"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"
     }
   }
 
