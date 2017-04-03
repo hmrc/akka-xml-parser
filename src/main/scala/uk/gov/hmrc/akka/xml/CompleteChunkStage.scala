@@ -49,12 +49,12 @@ object CompleteChunkStage {
   val XMLPROLOGUE_START = "<?xml version"
   val XMLPROLOGUE = "<?xml version=\"1.0\"?>"
 
-  def parser(maxSize: Option[Int] = None):
+  def parser(maxSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false):
   Flow[ByteString, ParsingData, NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(maxSize))
+    Flow.fromGraph(new StreamingXmlParser(maxSize,insertPrologueIfNotPresent))
   }
 
-  private class StreamingXmlParser(maxSize: Option[Int] = None)
+  private class StreamingXmlParser(maxSize: Option[Int] = None,insertPrologueIfNotPresent: Boolean = false)
     extends GraphStage[FlowShape[ByteString, ParsingData]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -95,14 +95,18 @@ object CompleteChunkStage {
               ByteString(data.substring(data.indexOf(OPENING_CHEVRON))).toArray
             else pushedData.toArray
 
-            chunk = if(data.contains(XMLPROLOGUE_START)) chunk else ByteString(XMLPROLOGUE).toArray ++ chunk
-
+            if(insertPrologueIfNotPresent) {
+              chunk = if (data.contains(XMLPROLOGUE_START)) chunk else ByteString(XMLPROLOGUE).toArray ++ chunk
+            }
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
             isFirstChunk = false
           } else {
             chunk = pushedData.toArray
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
           }
+
+
+
           totalProcessedLength += streamBuffer.length
           totalProcessedLength += chunk.length
           (maxSize) match {
