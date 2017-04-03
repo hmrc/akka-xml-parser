@@ -46,6 +46,8 @@ object CompleteChunkStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = "<"
+  val XMLPROLOGUE_START = "<?xml version"
+  val XMLPROLOGUE = "<?xml version=\"1.0\"?>"
 
   def parser(maxSize: Option[Int] = None):
   Flow[ByteString, ParsingData, NotUsed] = {
@@ -93,13 +95,14 @@ object CompleteChunkStage {
               ByteString(data.substring(data.indexOf(OPENING_CHEVRON))).toArray
             else pushedData.toArray
 
+            chunk = if(data.contains(XMLPROLOGUE_START)) chunk else ByteString(XMLPROLOGUE).toArray ++ chunk
+
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
             isFirstChunk = false
           } else {
             chunk = pushedData.toArray
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
           }
-
           totalProcessedLength += streamBuffer.length
           totalProcessedLength += chunk.length
           (maxSize) match {

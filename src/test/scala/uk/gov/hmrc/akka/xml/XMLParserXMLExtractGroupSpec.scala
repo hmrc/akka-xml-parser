@@ -63,7 +63,7 @@
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
 //
-//      r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id></header></xml>"
 //    }
 //  }
 //
@@ -82,7 +82,7 @@
 //    }
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id></header></xml>"
 //    }
 //  }
 //
@@ -123,7 +123,7 @@
 //    }
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id></header></xml>"
 //    }
 //  }
 //
@@ -140,7 +140,7 @@
 //    }
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header></xml>"
 //    }
 //  }
 //
@@ -151,7 +151,7 @@
 //    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header><body/></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header><body/></xml>"
 //    }
 //  }
 //
@@ -161,7 +161,7 @@
 //      ByteString("</id></header></xml>")))
 //
 //    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header></xml>"
 //    }
 //  }
 //
@@ -170,7 +170,7 @@
 //      ByteString("</id></header></xml>")))
 //
 //    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header></xml>"
 //    }
 //  }
 //
@@ -181,7 +181,7 @@
 //    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header></xml>"
 //    }
 //  }
 //
@@ -190,7 +190,7 @@
 //    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id></id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id></id></header></xml>"
 //    }
 //  }
 //
@@ -208,7 +208,7 @@
 //    }
 //
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>    </id></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>    </id></header></xml>"
 //    }
 //  }
 //
@@ -225,7 +225,7 @@
 //      )
 //    }
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><name>Hello</name></header></xml>"
 //    }
 //  }
 //
@@ -245,7 +245,7 @@
 //      )
 //    }
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id><name>Hello</name></header></xml>"
 //    }
 //  }
 //
@@ -272,7 +272,7 @@
 //    }
 //
 //    whenReady(source.runWith(parseToByteString(Set.empty))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id></xml>"
 //    }
 //  }
 //
@@ -286,7 +286,7 @@
 //      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
 //    }
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><id>12345</id></xml>"
 //    }
 //  }
 //
@@ -327,7 +327,7 @@
 //      )
 //    }
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><body><element Attribute=\"Test\">elementText</element></body></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><element Attribute=\"Test\">elementText</element></body></xml>"
 //    }
 //  }
 //
@@ -354,7 +354,7 @@
 //      r shouldBe Set()
 //    }
 //    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"
+//      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"
 //    }
 //  }
 //
