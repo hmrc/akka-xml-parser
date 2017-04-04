@@ -62,16 +62,19 @@ trait XMLParserFixtures {
       .via(flowByteStringPrint)
       .toMat(Sink.ignore)(Keep.right)
 
+    def parseToByteStringViaTransform(instructions: Set[XMLInstruction]) = Flow[ByteString]
+      .via(MinimumChunk.parser(15))
+      .via(CompleteChunkStage.parser())
+      .via(TransformStage.parser(instructions))
+      .toMat(collectByteString)(Keep.right)
+
     def flowXMLElements = Flow[(ByteString, Set[XMLElement])].map(x => x._2)
 
     def flowXMLGroupElements = Flow[(ByteString, Set[XMLGroupElement])].map(x => x._2)
 
     def flowByteString = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
 
-    def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => {
-      println("bytestring:" + x._1.utf8String)
-      x._1
-    })
+    def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
 
     def collectXMLElements: Sink[Set[XMLElement], Future[Set[XMLElement]]] =
       Sink.fold[Set[XMLElement], Set[XMLElement]](Set.empty)((a, b) => {

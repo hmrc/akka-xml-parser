@@ -31,6 +31,10 @@ trait ParsingDataFunctions {
     data.slice(offset, at) ++ insert
   }
 
+  def deleteBytes(data: ByteString, offset: Int, from: Int, to: Int): ByteString = {
+    data.slice(offset, from) ++ data.slice(to, data.length)
+  }
+
 }
 
 
