@@ -34,3 +34,9 @@ case class XMLInsertAfter(xPath: Seq[String], elementToInsert: String) extends X
 case class XMLTransform(startPath: Seq[String], endPath: Seq[String], f: String => String) extends XMLInstruction
 
 case class XMLStopParsing(startPath: Seq[String]) extends XMLInstruction
+
+case class XMLRemoveNamespacePrefix(xPath: Seq[String], removeForStartTag: Boolean = false, removeForEndTag: Boolean = false) extends XMLInstruction
+
+case class XMLRemovePrefixFromStartTag(xPath: Seq[String]) extends XMLInstruction
+
+case class XMLRemovePrefixFromEndTag(xPath: Seq[String]) extends XMLInstruction
