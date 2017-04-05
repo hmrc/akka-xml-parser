@@ -61,7 +61,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
 
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
@@ -81,7 +81,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
   }
@@ -92,7 +92,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set()
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe ""
     }
   }
@@ -103,7 +103,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set()
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe ""
     }
   }
@@ -122,7 +122,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
     }
   }
@@ -139,7 +139,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
@@ -150,7 +150,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       ByteString("</xml>")))
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header><body/></xml>"
     }
   }
@@ -160,7 +160,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       ByteString("d>"),
       ByteString("</id></header></xml>")))
 
-    whenReady(source.runWith(parseToByteString(Seq.empty))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
@@ -169,7 +169,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val source = Source(List(ByteString("<xml><header><id>"),
       ByteString("</id></header></xml>")))
 
-    whenReady(source.runWith(parseToByteString(Seq.empty))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
@@ -180,7 +180,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       ByteString("</id></header></xml>")))
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
@@ -189,7 +189,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val source = Source(List(ByteString("<xml><header><id></id></header></xml>")))
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "idfake")))
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id></id></header></xml>"
     }
   }
@@ -207,7 +207,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>    </id></header></xml>"
     }
   }
@@ -224,7 +224,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
     }
   }
@@ -244,7 +244,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
     }
   }
@@ -257,7 +257,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
     }
 
-    whenReady(source.runWith(parseToByteString(Seq.empty))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
       r.utf8String shouldBe "malformed"
     }
   }
@@ -271,7 +271,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
-    whenReady(source.runWith(parseToByteString(Seq.empty))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
     }
   }
@@ -285,7 +285,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r.toSeq(0) shouldBe XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
       r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
     }
   }
@@ -298,7 +298,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<header>brokenID</brokenTag><moreBytes/>"
     }
   }
@@ -311,7 +311,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<header><moreBytes/></header1111>"
     }
   }
@@ -326,7 +326,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         )
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><body><element Attribute=\"Test\">elementText</element></body></xml>"
     }
   }
@@ -341,7 +341,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml Attribute=\"Test\" Attribute2=\"Test2\"></xml>"
     }
   }
@@ -353,7 +353,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set()
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"
     }
   }
@@ -366,7 +366,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(XMLGroupElement(Seq("xml"), Map("type" -> "test"), Some("")))
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml type=\"test\"><body><foo>test</foo><bar>test</bar></body></xml>"
     }
   }
@@ -379,7 +379,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r shouldBe Set(XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\"><body><foo>test</foo><bar>test</bar></body></xml>"
     }
   }
@@ -392,7 +392,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe Set(
         XMLGroupElement(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")))
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<gt:GovTalkMessage xmlns:gt=\"http://www.govtalk.gov.uk/CM/envelope\"><gt:EnvelopeVersion>2.0</gt:EnvelopeVersion></gt:GovTalkMessage>"
     }
   }
@@ -407,7 +407,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         XMLGroupElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some(""))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\" xsi:schemaLocation=\"http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><bo" +
         "dy><foo>test</foo><bar>test</bar></body></xml>"
     }
@@ -429,7 +429,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         XMLGroupElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\" " +
         "xsi:schemaLocation=\"http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd\" " +
         "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><bo" +
@@ -454,7 +454,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       )
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -479,7 +479,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         //XMLGroupElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -504,12 +504,11 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
         //XMLGroupElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
     }
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
     }
-
   }
 
 
@@ -557,12 +556,11 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
     }
-
   }
 
 
@@ -591,12 +589,11 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
     }
-
   }
 
   it should "not cause an error if no namespace attribute exists" in {
@@ -627,12 +624,11 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
     }
-
   }
 
 
@@ -664,12 +660,11 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
     }
-
   }
 
   it should "extract the element value, the attribute name and its value if specified" in {
@@ -698,7 +693,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -738,7 +733,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -777,7 +772,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -816,7 +811,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }
@@ -852,7 +847,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
       r shouldBe expected
     }
 
-    whenReady(source.runWith(parseToByteString(paths))) { r =>
+    whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
         r shouldBe t
       }

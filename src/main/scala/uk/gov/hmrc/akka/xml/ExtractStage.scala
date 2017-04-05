@@ -72,6 +72,8 @@ object ExtractStage {
             advanceParser()
             push(out, (chunk,
               getCompletedXMLElements(xmlElements).toSet))
+            // the last chunk has already been sent, so need to reset before the emit stage to avoid duplication
+            chunk = ByteString("")
           }
         }
 
