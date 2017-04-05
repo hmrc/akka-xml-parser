@@ -41,12 +41,19 @@ trait XMLParserFixtures {
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
-    def parseToXMLGroupElements(instructions: Set[XMLInstruction],
+    def parseToXMLGroupElements(instructions: Seq[XMLInstruction],
                                 parentNodes: Option[Seq[String]] = None): Sink[ByteString, Future[Set[XMLGroupElement]]] =
       Flow[ByteString]
         .via(ExtractStage.parser(instructions, parentNodes))
         .via(flowXMLGroupElements)
         .toMat(collectXMLGroupElements)(Keep.right)
+
+    def parseToByteStringViaExtract(instructions: Seq[XMLInstruction],
+                                parentNodes: Option[Seq[String]] = None) =
+      Flow[ByteString]
+        .via(ExtractStage.parser(instructions, parentNodes))
+        .via(flowByteStringViaExtract)
+        .toMat(collectByteString)(Keep.right)
 
     def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false)
     = Flow[ByteString]
@@ -73,6 +80,8 @@ trait XMLParserFixtures {
     def flowXMLGroupElements = Flow[(ByteString, Set[XMLGroupElement])].map(x => x._2)
 
     def flowByteString = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
+
+    def flowByteStringViaExtract = Flow[(ByteString, Set[XMLGroupElement])].map(x => x._1)
 
     def flowByteStringPrint = Flow[(ByteString, Set[XMLElement])].map(x => x._1)
 
