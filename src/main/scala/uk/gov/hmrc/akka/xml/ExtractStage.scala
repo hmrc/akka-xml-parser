@@ -33,11 +33,11 @@ object ExtractStage {
   val MALFORMED_STATUS = "Malformed"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
 
-  def parser(instructions: Set[XMLInstruction],
+  def parser(instructions: Seq[XMLInstruction],
              parentNodes: Option[Seq[String]] = None): Flow[ByteString, (ByteString, Set[XMLGroupElement]), NotUsed] =
     Flow.fromGraph(new StreamingXmlParser(instructions, parentNodes))
 
-  private class StreamingXmlParser(instructions: Set[XMLInstruction], parentNodes: Option[Seq[String]])
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction], parentNodes: Option[Seq[String]])
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLGroupElement])]] with ExtractStageHelpers {
     val in: Inlet[ByteString] = Inlet("XMLParser.in")
     val out: Outlet[(ByteString, Set[XMLGroupElement])] = Outlet("XMLParser.out")

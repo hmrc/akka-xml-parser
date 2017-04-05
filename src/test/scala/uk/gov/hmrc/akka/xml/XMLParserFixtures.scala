@@ -41,7 +41,7 @@ trait XMLParserFixtures {
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
-    def parseToXMLGroupElements(instructions: Set[XMLInstruction],
+    def parseToXMLGroupElements(instructions: Seq[XMLInstruction],
                                 parentNodes: Option[Seq[String]] = None): Sink[ByteString, Future[Set[XMLGroupElement]]] =
       Flow[ByteString]
         .via(ExtractStage.parser(instructions, parentNodes))
