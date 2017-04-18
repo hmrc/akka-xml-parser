@@ -124,7 +124,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
       if (string == "<body><fo123o>test</fo123o><bar>test</bar></body></xml>") None else Some(new ParserValidationError {})
     val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
 
-    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
       r.last.attributes(ParsingStage.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
 
     }
@@ -141,7 +141,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
       if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new ParserValidationError {})
     val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
 
-    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
       )

@@ -85,23 +85,21 @@ object ParsingStage {
         def processOnPush() = {
           parsingData = grab(in)
           chunkOffset = 0
-          (validationMaxSize) match {
-            case Some(validationSize)
-              if parsingData.totalProcessedLength > (validationSize + validationMaxSizeOffset) &&
-                instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_)) =>
-              Failure(new NoValidationTagsFoundWithinFirstNBytesException)
-            case _ =>
-              Try {
-                if (continueParsing) {
-                  parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
-                  advanceParser()
-                  push(out, (ByteString(streamBuffer.toArray),
-                    getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
-                  streamBuffer.clear()
-                } else {
-                  push(out, (parsingData.data, Set.empty[XMLElement]))
-                }
+          Try {
+            if (continueParsing) {
+              parser.getInputFeeder.feedInput(parsingData.data.toArray, 0, parsingData.data.length)
+              advanceParser()
+              push(out, (ByteString(streamBuffer.toArray),
+                getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
+
+              if (parsingData.totalProcessedLength > (validationMaxSize.getOrElse(0) + validationMaxSizeOffset) &&
+                instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_))) {
+                throw new NoValidationTagsFoundWithinFirstNBytesException
               }
+              streamBuffer.clear()
+            } else {
+              push(out, (parsingData.data, Set.empty[XMLElement]))
+            }
           }
         }
 
