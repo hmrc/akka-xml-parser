@@ -91,12 +91,12 @@ object ParsingStage {
               advanceParser()
               push(out, (ByteString(streamBuffer.toArray),
                 getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements))
+              streamBuffer.clear()
 
               if (parsingData.totalProcessedLength > (validationMaxSize.getOrElse(0) + validationMaxSizeOffset) &&
                 instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_))) {
                 throw new NoValidationTagsFoundWithinFirstNBytesException
               }
-              streamBuffer.clear()
             } else {
               push(out, (parsingData.data, Set.empty[XMLElement]))
             }
