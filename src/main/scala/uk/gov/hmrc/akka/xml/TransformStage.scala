@@ -75,7 +75,7 @@ object TransformStage {
         })
 
         private def emitChunk(): Unit = {
-          if(hasTransformHappened){
+          if (hasTransformHappened) {
             push(out, (ByteString(streamBuffer.toArray)))
             streamBuffer.clear()
           }
@@ -102,7 +102,7 @@ object TransformStage {
             val (elementStart, elementEnd) = getBounds(parser)
             event match {
               case AsyncXMLStreamReader.EVENT_INCOMPLETE =>
-                if(hasTransformHappened)
+                if (hasTransformHappened)
                   streamBuffer ++= parsingData.data.slice(chunkOffset, parsingData.data.length)
                 chunkOffset = elementEnd
 
@@ -110,15 +110,17 @@ object TransformStage {
                 node += parser.getLocalName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
                   case e: XMLTransform if e.startPath == node.slice(0, e.startPath.length) =>
-                    val newBytes = parsingData.data.slice(elementStart, elementEnd)
-                    streamBuffer ++= newBytes
+                    if (!parser.isEmptyElement) {
+                      val newBytes = parsingData.data.slice(elementStart, elementEnd)
+                      streamBuffer ++= newBytes
+                    }
 
                   case e: XMLRemoveNamespacePrefix if (node == e.xPath && e.removeForStartTag) => {
                     val prefix = Option(parser.getPrefix) match {
                       case Some(pre) if pre.length > 0 =>
                         streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
                         streamBuffer ++= ByteString("<")
-                        streamBuffer ++= parsingData.data.slice(elementStart + 2 + pre.length , elementEnd)
+                        streamBuffer ++= parsingData.data.slice(elementStart + 2 + pre.length, elementEnd)
                         chunkOffset = elementEnd
                       case _ =>
                     }
@@ -148,7 +150,7 @@ object TransformStage {
                         case Some(pre) if pre.length > 0 =>
                           streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
                           streamBuffer ++= ByteString("</")
-                          streamBuffer ++= parsingData.data.slice(elementStart + 3 + pre.length , elementEnd)
+                          streamBuffer ++= parsingData.data.slice(elementStart + 3 + pre.length, elementEnd)
                           chunkOffset = elementEnd
 
                         case _ =>
