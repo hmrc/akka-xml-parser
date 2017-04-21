@@ -125,7 +125,6 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
       r.utf8String shouldBe "<h:xml xmlns:h=\"test\"><h:header><h:foo><h:bar>bar</h:bar></h:foo></h:header></h:xml>"
     }
   }
@@ -138,7 +137,6 @@ class XMLParserXmlUpdateSpec
     )
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-      println(r.utf8String)
       r.utf8String shouldBe "<h:xml xmlns:h=\"test\"><h:header><h:foo><h:bar>bar</h:bar></h:foo></h:header></h:xml>"
     }
   }
