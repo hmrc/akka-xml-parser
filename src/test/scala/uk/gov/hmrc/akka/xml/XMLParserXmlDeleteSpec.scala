@@ -181,7 +181,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
 
@@ -192,7 +192,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
+      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
 }
