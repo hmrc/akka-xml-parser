@@ -1,0 +1,121 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.gov.hmrc.akka.xml
+
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.mock.MockitoSugar
+
+/**
+  * Created by christine on 21/04/17.
+  */
+class XMLInsertBeforeSpec extends FlatSpec
+  with Matchers
+  with ScalaFutures
+  with MockitoSugar
+  with Eventually
+  with XMLParserFixtures {
+  val f = fixtures
+
+  import f._
+
+  behavior of "XMLInsertBefore"
+
+  it should "insert a given element before the provided xPath" in {
+    val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
+    val instruction = Seq[XMLInstruction](XMLInsertBefore(Seq("xml", "header", "id"), Seq("xml", "header", "hello"), Some("world")))
+
+    whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(instruction))) { r =>
+      println(r.utf8String)
+      r.utf8String shouldBe "<xml><header><hello>world</hello><id>12345</id></header></xml>"
+    }
+  }
+
+  it should "insert a given element before the provided xPath - with chunking at start tag" in {
+    val source = Source(List(ByteString("<xml><header><i"),ByteString("d>12345</id></header></xml>")))
+    val instruction = Seq[XMLInstruction](XMLInsertBefore(Seq("xml", "header", "id"), Seq("xml", "header", "hello"), Some("world")))
+
+    whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(instruction))) { r =>
+      r.utf8String shouldBe "<xml><header><hello>world</hello><id>12345</id></header></xml>"
+    }
+  }
+
+  it should "insert a given element before the provided xPath - with chunking at end tag" in {
+    val source = Source(List(ByteString("<xml><header><id>12345</i"),ByteString("d></header></xml>")))
+    val instruction = Seq[XMLInstruction](XMLInsertBefore(Seq("xml", "header", "id"), Seq("xml", "header", "hello"), Some("world")))
+
+    whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(instruction))) { r =>
+      r.utf8String shouldBe "<xml><header><hello>world</hello><id>12345</id></header></xml>"
+    }
+  }
+
+  it should "insert a given element before the provided xPath and delete if already present" in {
+    val source = Source(List(ByteString("<xml><header><hello>old world</hello><id>12345</i"),ByteString("d></header></xml>")))
+    val instruction = Seq[XMLInstruction](
+      (XMLInsertBefore(Seq("xml", "header", "id"), Seq("xml", "header", "hello"), Some("new world"))),
+      XMLDelete(Seq("xml", "header", "hello"))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(instruction))) { r =>
+      r.utf8String shouldBe "<xml><header><hello>new world</hello><id>12345</id></header></xml>"
+    }
+  }
+
+  it should "insert a given element before the provided xPath and donot delete anything if not present" in {
+    val source = Source(List(ByteString("<xml><header><id>12345</i"),ByteString("d></header></xml>")))
+    val instruction = Seq[XMLInstruction](
+      (XMLInsertBefore(Seq("xml", "header", "id"), Seq("xml", "header", "hello"), Some("new world"))),
+      XMLDelete(Seq("xml", "header", "hello"))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
+      r shouldBe Set(
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(instruction))) { r =>
+      r.utf8String shouldBe "<xml><header><hello>new world</hello><id>12345</id></header></xml>"
+    }
+  }
+}

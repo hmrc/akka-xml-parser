@@ -178,6 +178,12 @@ object ParsingStage {
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
 
+                  case e@XMLInsertBefore(`node`, xPathToInsert, elementToInsert) =>
+                    val input = getUpdatedElement(e.xPathToInsert, Map.empty, e.value)(parser).getBytes
+                    streamBuffer ++= insertBytes(parsingData.data, chunkOffset, start, input)
+                    completedInstructions += e
+                    chunkOffset = start
+
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
                       case path if path == node.toList =>
