@@ -75,14 +75,14 @@ trait StreamHelper {
     collection
   }.toMap
 
-  def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: Option[String])
+  def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: String)
                        (implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
     val prefix = getPrefix
 
     val startElement = attributes.foldLeft(s"<$prefix${xPath.last}") {
       case (s, (k, v)) => s"""$s $k="$v""""
     } + ">"
-    val value = elemText.getOrElse("")
+    val value = elemText
     val endElement = getEndElement(xPath, prefix)
     s"$startElement$value$endElement"
   }

@@ -181,7 +181,7 @@ object ParsingStage {
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
                       case path if path == node.toList =>
-                        val input = getUpdatedElement(e.xPath, e.attributes, e.value)(parser).getBytes
+                        val input = getUpdatedElement(e.xPath, e.attributes, e.upsertBlock(parser.getPrefix))(parser).getBytes
                         streamBuffer ++= insertBytes(parsingData.data, chunkOffset, start, input)
                         chunkOffset = end
                       case _ =>
@@ -226,7 +226,7 @@ object ParsingStage {
                       chunkOffset = end
 
                     case e: XMLUpdate if e.xPath.dropRight(1) == node && e.isUpsert =>
-                      val input = getUpdatedElement(e.xPath, e.attributes, e.value)(parser).getBytes
+                      val input = getUpdatedElement(e.xPath, e.attributes, e.upsertBlock(parser.getPrefix))(parser).getBytes
                       streamBuffer ++= insertBytes(parsingData.data, chunkOffset, start, input)
                       completedInstructions += e
                       chunkOffset = start
