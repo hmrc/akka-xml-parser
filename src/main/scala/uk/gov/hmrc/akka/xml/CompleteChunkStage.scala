@@ -47,7 +47,7 @@ object CompleteChunkStage {
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = "<"
   val XMLPROLOGUE_START = "<?xml version"
-  val XMLPROLOGUE = "<?xml version=\"1.0\"?>"
+  val XMLPROLOGUE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 
   def parser(maxSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false):
   Flow[ByteString, ParsingData, NotUsed] = {
