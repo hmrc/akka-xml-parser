@@ -132,8 +132,10 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert an element and delete an element" in {
     val source = Source.single(ByteString("<xml><header></header><body><title>hello</title></body></xml>"))
+    val upsertBlock: String => String = (prefix: String) => "bar"
+
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -143,8 +145,9 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert an element and delete an element - multiple chunks" in {
     val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -154,8 +157,9 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "donot insert a prolog in first chunk if already exists" in {
     val source = Source(List(ByteString("<?xml version=\"1.1\"?><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
@@ -165,8 +169,9 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "donot insert a prolog in first chunk if already exists even if flag is set" in {
     val source = Source(List(ByteString("<?xml version=\"1.1\"?><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
@@ -176,8 +181,9 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert a prolog in first chunk" in {
     val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
@@ -187,8 +193,9 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   it should "insert a prolog in first chunk before comments" in {
     val source = Source(List(ByteString("<!-- Comments --><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
     val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), Some("bar"), isUpsert = true),
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
       XMLDelete(Seq("xml", "body", "title")))
 
     whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
