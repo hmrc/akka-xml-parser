@@ -21,7 +21,7 @@ package uk.gov.hmrc.akka.xml
   */
 sealed trait XMLInstruction
 
-case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.empty) extends XMLInstruction
+case class XMLExtract(xPath: Seq[String], attributes: Map[String, String] = Map.empty, extractBlock: Boolean = false) extends XMLInstruction
 
 case class XMLUpdate(xPath: Seq[String], upsertBlock: String => String, attributes: Map[String, String] = Map.empty, isUpsert: Boolean = false) extends XMLInstruction
 

@@ -131,7 +131,7 @@ object ExtractStage {
                 }
                 node += localName
                 instructions.foreach(f = (e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
+                  case e@XMLExtract(`node`, _, false) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
                     val groupedNodes = activeGroupings collect {
                       case nodes if nodes.nonEmpty => nodes.map(group => XMLGroup(group._1, group._2)).toSeq
@@ -155,7 +155,7 @@ object ExtractStage {
 
                 instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case XMLExtract(`node`, _) =>
+                    case XMLExtract(`node`, _, false) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
 
                     case _ =>
@@ -168,7 +168,7 @@ object ExtractStage {
               case XMLStreamConstants.CHARACTERS =>
                 instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case XMLExtract(`node`, _) =>
+                    case XMLExtract(`node`, _, false) =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
                         isCharacterBuffering = true
