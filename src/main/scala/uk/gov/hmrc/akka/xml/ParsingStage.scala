@@ -153,12 +153,16 @@ object ParsingStage {
         var isCharacterBuffering = false
         var chunkOffset = 0
         var continueParsing = true
+        var collectionKey = ""
+        var collectionMap: Map[String, String] = Map.empty[String, String]
+        var elementBlockExtracting: Boolean = false
 
         val node = ArrayBuffer[String]()
         val completedInstructions = ArrayBuffer[XMLInstruction]()
         val xmlElements = mutable.Set[XMLElement]()
         val bufferedText = new StringBuilder
         val streamBuffer = ArrayBuffer[Byte]()
+        val elementBlock = new StringBuilder
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
 
         @tailrec private def advanceParser(): Unit = {
@@ -173,10 +177,14 @@ object ParsingStage {
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
+                  case e@XMLExtract(`node`, _, false) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
                     val keys = getPredicateMatch(parser, e.attributes)
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
+
+                  case e@XMLExtract(_, _, true) if node.toList == e.xPath | elementBlockExtracting =>
+                    elementBlockExtracting = true
+                    elementBlock.append(extractBytes(parsingData.data, start, end).utf8String)
 
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
@@ -217,8 +225,27 @@ object ParsingStage {
                 isCharacterBuffering = false
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e@XMLExtract(`node`, _) =>
+                    case e@XMLExtract(`node`, _, false) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
+
+                    case e@XMLExtract(_, _, true) if elementBlockExtracting =>
+                      elementBlock.append(extractBytes(parsingData.data, start, end).utf8String)
+                      if (e.xPath == node.toList) {
+                        val ele = XMLElement(e.xPath, Map.empty[String, String], Some(elementBlock.toString()))
+                        xmlElements.add(ele)
+                        elementBlockExtracting = false
+                        elementBlock.clear()
+                      }
+
+                    case e@XMLExtractCollection(_, `node`, _) =>
+                      collectionKey = bufferedText.toString()
+
+                    case e@XMLExtractCollection( _, _, `node`) if collectionKey.length > 0 =>
+                      collectionMap = collectionMap + (collectionKey -> bufferedText.toString)
+
+                    case e@XMLExtractCollection(`node`, _, _) if collectionMap.nonEmpty =>
+                      val ele = XMLElement(e.xPath, collectionMap, Some(""))
+                      xmlElements.add(ele)
 
                     case e@XMLInsertAfter(`node`, elementToInsert) =>
                       streamBuffer ++= insertBytes(parsingData.data, chunkOffset, end, elementToInsert.getBytes)
@@ -260,12 +287,34 @@ object ParsingStage {
               case XMLStreamConstants.CHARACTERS =>
                 instructions.foreach(f = (e: XMLInstruction) => {
                   e match {
-                    case e@XMLExtract(`node`, _) =>
+                    case e@XMLExtract(`node`, _, false) =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
                         isCharacterBuffering = true
                         bufferedText.append(t)
                       }
+
+                    case e@XMLExtract(_, _, true) if elementBlockExtracting =>
+                      val t = parser.getText()
+                      if (t.trim.length > 0) {
+                        isCharacterBuffering = true
+                        elementBlock.append(t)
+                      }
+
+                    case e@XMLExtractCollection(_, `node`, _) =>
+                      val t = parser.getText()
+                      if (t.trim.length > 0) {
+                        isCharacterBuffering = true
+                        bufferedText.append(t)
+                      }
+
+                    case e@XMLExtractCollection(_, _, `node`) =>
+                      val t = parser.getText()
+                      if (t.trim.length > 0) {
+                        isCharacterBuffering = true
+                        bufferedText.append(t)
+                      }
+
                     case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                       chunkOffset = end
 

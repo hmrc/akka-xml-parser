@@ -54,6 +54,22 @@ class XMLParserXmlExtractSpec extends FlatSpec
     }
   }
 
+  it should "extract a single xmlBlock from a valid xml when extractBlock is true" in {
+    val source = Source.single(ByteString("ï»¿<xml><header><id><foo>foo</foo><bar>bar</bar></id></header></xml>"))
+    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map.empty, true))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id><foo>foo</foo><bar>bar</bar></id></header></xml>"
+    }
+  }
+
   it should "extract max size value when the bytes are split - xml starts with illegal texts" in {
     val source = Source(List(ByteString("11111111<xml><header><i"),
       ByteString("d>12"),
@@ -103,22 +119,22 @@ class XMLParserXmlExtractSpec extends FlatSpec
   }
 
 
-  it should "extract a single value when the bytes are split" in {
+  it should "extract a single xmlblock when the bytes are split and extractBlock is true" in {
     val source = Source(List(ByteString("<xml><header><i"),
-      ByteString("d>12"),
-      ByteString("3"),
-      ByteString("45</id></header></xml>")))
-    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
+      ByteString("d><foo"),
+      ByteString(">fo"), ByteString("o</foo"), ByteString("><bar"), ByteString(">bar"),
+      ByteString("</bar></id></header></xml>")))
+    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map.empty, true))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><header><id>12345</id></header></xml>"
+      r.utf8String shouldBe "<xml><header><id><foo>foo</foo><bar>bar</bar></id></header></xml>"
     }
   }
 
@@ -228,6 +244,27 @@ class XMLParserXmlExtractSpec extends FlatSpec
       r.utf8String shouldBe "<xml><header><id>12345</id><name>Hello</name></header></xml>"
     }
   }
+
+  it should "extract the block when the bytes are split and there are other elements at the same level" in {
+    val source = Source(List(ByteString("<xml><header><id><foo>foo</foo><b"),
+      ByteString("ar>bar</bar></id><name>"),
+      ByteString("He"),
+      ByteString("llo</name></header></xml>")))
+
+    val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map.empty, true))
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe Set(
+        XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><header><id><foo>foo</foo><bar>bar</bar></id></header></xml>"
+    }
+  }
+
 
 
   it should "extract the ID when the bytes are split and there are other elements at the same level" in {
