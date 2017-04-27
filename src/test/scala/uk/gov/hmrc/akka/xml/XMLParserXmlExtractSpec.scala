@@ -256,12 +256,12 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "83"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
-      r.utf8String shouldBe "<xml><header><id><foo>foo</foo><bar>bar</bar></id></header></xml>"
+      r.utf8String shouldBe "<xml><header><id><foo>foo</foo><bar>bar</bar></id><name>Hello</name></header></xml>"
     }
   }
 

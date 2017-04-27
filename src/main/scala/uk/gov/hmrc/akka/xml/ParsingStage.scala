@@ -153,8 +153,6 @@ object ParsingStage {
         var isCharacterBuffering = false
         var chunkOffset = 0
         var continueParsing = true
-        var collectionKey = ""
-        var collectionMap: Map[String, String] = Map.empty[String, String]
         var elementBlockExtracting: Boolean = false
 
         val node = ArrayBuffer[String]()
@@ -236,17 +234,6 @@ object ParsingStage {
                         elementBlockExtracting = false
                         elementBlock.clear()
                       }
-
-                    case e@XMLExtractCollection(_, `node`, _) =>
-                      collectionKey = bufferedText.toString()
-
-                    case e@XMLExtractCollection( _, _, `node`) if collectionKey.length > 0 =>
-                      collectionMap = collectionMap + (collectionKey -> bufferedText.toString)
-
-                    case e@XMLExtractCollection(`node`, _, _) if collectionMap.nonEmpty =>
-                      val ele = XMLElement(e.xPath, collectionMap, Some(""))
-                      xmlElements.add(ele)
-
                     case e@XMLInsertAfter(`node`, elementToInsert) =>
                       streamBuffer ++= insertBytes(parsingData.data, chunkOffset, end, elementToInsert.getBytes)
                       completedInstructions += e
@@ -299,20 +286,6 @@ object ParsingStage {
                       if (t.trim.length > 0) {
                         isCharacterBuffering = true
                         elementBlock.append(t)
-                      }
-
-                    case e@XMLExtractCollection(_, `node`, _) =>
-                      val t = parser.getText()
-                      if (t.trim.length > 0) {
-                        isCharacterBuffering = true
-                        bufferedText.append(t)
-                      }
-
-                    case e@XMLExtractCollection(_, _, `node`) =>
-                      val t = parser.getText()
-                      if (t.trim.length > 0) {
-                        isCharacterBuffering = true
-                        bufferedText.append(t)
                       }
 
                     case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
