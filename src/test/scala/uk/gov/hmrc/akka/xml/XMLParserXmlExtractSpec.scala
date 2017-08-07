@@ -596,7 +596,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
       XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "939"), Some(CompleteChunkStage.STREAM_SIZE)),
-      XMLElement(List("GovTalkMessage"), Map("xmlns" -> "http://www.govtalk"), Some("")),
+      XMLElement(List("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk"), Some("")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Function"), Map(), Some("submit")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Qualifier"), Map(), Some("response")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"), Map(), Some("12345678"))
