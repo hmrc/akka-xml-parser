@@ -27,27 +27,26 @@ object ExtractNameSpace {
     val XMLNS = "xmlns"
     val extractedNameSpaces = scala.collection.mutable.Map[String, String]()
 
-    (0 until parser.getNamespaceCount).foreach { currentNS =>
-      val ns: String = if (parser.getNamespacePrefix(currentNS).length == 0) XMLNS else XMLNS + ":" + parser.getNamespacePrefix(currentNS)
+    (0 until parser.getNamespaceCount).foreach { index =>
+      val ns = if (parser.getNamespacePrefix(index).length == 0) XMLNS else XMLNS + ":" + parser.getNamespacePrefix(index)
 
-      compareNameSpaceToTarget(targetNameSpace, currentNS, ns)
+      upsertMatchingNameSpace(targetNameSpace, ns, index)
     }
 
-    (0 until parser.getAttributeCount).foreach { i =>
+    (0 until parser.getAttributeCount).foreach { index =>
       if (targetNameSpace.isEmpty) {
-        extractedNameSpaces += (parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
-      } else if (targetNameSpace.keySet(parser.getAttributeLocalName(i)) || targetNameSpace.keySet(
-        parser.getAttributePrefix(i) + ":" + parser.getAttributeLocalName(i))) {
-        extractedNameSpaces += (parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
+        extractedNameSpaces += (parser.getAttributeLocalName(index) -> parser.getAttributeValue(index))
+      } else if (targetNameSpace.keySet(parser.getAttributeLocalName(index)) || targetNameSpace.keySet(
+        parser.getAttributePrefix(index) + ":" + parser.getAttributeLocalName(index))) {
+        extractedNameSpaces += (parser.getAttributeLocalName(index) -> parser.getAttributeValue(index))
       }
     }
 
-    def compareNameSpaceToTarget(targetNameSpace: Map[String, String], i: Int, ns: String) = {
+    def upsertMatchingNameSpace(targetNameSpace: Map[String, String], ns: String, index: Int) = {
       targetNameSpace.foreach {
         case (k, v) =>
-          if (v == parser.getNamespaceURI(i)) {
-            extractedNameSpaces += (ns -> parser.getNamespaceURI(i))
-          }
+          if (v == parser.getNamespaceURI(index))
+            extractedNameSpaces += (ns -> parser.getNamespaceURI(index))
       }
     }
     extractedNameSpaces.toMap
