@@ -131,8 +131,8 @@ object ExtractStage {
                 }
                 node += localName
                 instructions.foreach(f = (e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _, false) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
-                    val keys = getPredicateMatch(parser, e.attributes)
+                  case e@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
+                    val keys = ExtractNameSpace(parser, e.attributes)
                     val groupedNodes = activeGroupings collect {
                       case nodes if nodes.nonEmpty => nodes.map(group => XMLGroup(group._1, group._2)).toSeq
                     }

@@ -175,8 +175,8 @@ object ParsingStage {
               case XMLStreamConstants.START_ELEMENT =>
                 node += parser.getLocalName
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
-                  case e@XMLExtract(`node`, _, false) if getPredicateMatch(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
-                    val keys = getPredicateMatch(parser, e.attributes)
+                  case e@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, e.attributes).nonEmpty || e.attributes.isEmpty =>
+                    val keys = ExtractNameSpace(parser, e.attributes)
                     val ele = XMLElement(e.xPath, keys, None)
                     xmlElements.add(ele)
 
