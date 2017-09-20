@@ -41,7 +41,7 @@ trait StreamHelper {
   def getCompletedXMLElements(xmlElementsLst: scala.collection.mutable.Set[XMLElement]):
   scala.collection.mutable.Set[XMLElement] = {
     val completedElements = xmlElementsLst.collect {
-      case e if !(e.xPath.nonEmpty && e.value.isEmpty) => e
+      case e if !(e.xPath.nonEmpty && (e.value.isEmpty && e.attributes.isEmpty)) => e
     }
 
     completedElements.foreach({

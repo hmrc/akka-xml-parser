@@ -21,6 +21,7 @@ import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
+import org.scalatest.time.{Millis, Seconds, Span}
 
 class XMLParserXMLExtractNamespaceSpec extends FlatSpec
   with Matchers
@@ -30,6 +31,8 @@ class XMLParserXMLExtractNamespaceSpec extends FlatSpec
   with XMLParserFixtures {
 
   val f = fixtures
+  implicit override val patienceConfig =
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
 
   import f._
 

@@ -404,7 +404,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml"), Map("type" -> "test")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(XMLElement(Seq("xml"), Map("type" -> "test"), Some("")),
+      r shouldBe Set(XMLElement(Seq("xml"), Map("type" -> "test"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -418,7 +418,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+      r shouldBe Set(XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "100"), Some(CompleteChunkStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -447,7 +447,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
       )
     }
@@ -469,9 +469,9 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
+        XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), None)
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -494,9 +494,9 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
+        XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), None)
       )
     }
 
@@ -520,7 +520,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
         // We shouldn't see this one - XMLElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
         //XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
@@ -546,9 +546,9 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
+        XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some(""))
+        XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), None)
         //XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
     }
@@ -596,7 +596,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
       XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "939"), Some(CompleteChunkStage.STREAM_SIZE)),
-      XMLElement(List("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk"), Some("")),
+      XMLElement(List("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk"), None),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Function"), Map(), Some("submit")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Qualifier"), Map(), Some("response")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "CorrelationID"), Map(), Some("12345678"))
@@ -756,5 +756,43 @@ class XMLParserXmlExtractSpec extends FlatSpec
         r shouldBe t
       }
     }
+  }
+
+  it should "extract the namespace envelope from the attribute" in {
+
+    val source = Source(List(ByteString(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?><GovTalkMessage xmlns=\"http://www.govtalk.gov.uk/CM/envelope\"><EnvelopeVersion>2.0</EnvelopeVersion>"), ByteString(
+      "<Header><MessageDetails><Class>HMRC-CT-CT600</Class><Qualifier>request</Qualifier><Function>submit"), ByteString(
+      "</Function><TransactionID></TransactionID><CorrelationID>454545454</CorrelationID><Transformation>"), ByteString(
+      "XML</Transformation><GatewayTest>0</GatewayTest></MessageDetails><SenderDetails><IDAuthentication>"), ByteString(
+      "<SenderID>user1</SenderID><Authentication><Method>clear</Method><Role>principal</Role>"), ByteString(
+      "<Value>pass</Value></Authentication></IDAuthentication></SenderDetails></Header><GovTalkDetails>"), ByteString(
+      "<Keys><Key Type=\"TestKey\">Retry2</Key></Keys> <TargetDetails><Organisation>CapGemini</Organisation>"), ByteString(
+      "</TargetDetails><ChannelRouting><Channel><URI>1192</URI> <Product>HMRC CT600</Product>"), ByteString(
+      "<Version>1.0.1</Version></Channel></ChannelRouting></GovTalkDetails><Body></Body>"), ByteString(
+      "</GovTalkMessage>")))
+
+
+    val paths = Seq[XMLInstruction](
+      XMLExtract(Seq("GovTalkMessage", "Header", "MessageDetails", "Class")),
+      XMLExtract(Seq("GovTalkMessage"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"))
+    )
+
+    val expected = Set(
+      XMLElement(List("GovTalkMessage"),Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"),None),
+      XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
+      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "897"), Some(CompleteChunkStage.STREAM_SIZE))
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths))) { r =>
+      r shouldBe expected
+    }
+
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      whenReady(source.toMat(collectByteString)(Keep.right).run()) { t =>
+        r shouldBe t
+      }
+    }
+
   }
 }
