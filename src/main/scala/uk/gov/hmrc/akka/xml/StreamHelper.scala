@@ -41,7 +41,7 @@ trait StreamHelper {
   def getCompletedXMLElements(xmlElementsLst: scala.collection.mutable.Set[XMLElement]):
   scala.collection.mutable.Set[XMLElement] = {
     val completedElements = xmlElementsLst.collect {
-      case e if !(e.xPath.nonEmpty && e.value.isEmpty) => e
+      case e if !(e.xPath.nonEmpty && (e.value.isEmpty && e.attributes.isEmpty)) => e
     }
 
     completedElements.foreach({
@@ -51,29 +51,6 @@ trait StreamHelper {
     completedElements
   }
 
-  def getPredicateMatch(parser: AsyncXMLStreamReader[AsyncByteArrayFeeder], predicates: Map[String, String]): Map[String, String] = {
-    val XMLNS = "xmlns"
-    val collection = scala.collection.mutable.Map[String, String]()
-
-    if (parser.getNamespaceCount > 0 && predicates.keySet(XMLNS)) collection.+=(XMLNS -> parser.getNamespaceURI(0))
-    (0 until parser.getNamespaceCount).map { i =>
-      val ns = if (parser.getNamespacePrefix(i).length == 0) XMLNS else XMLNS + ":" + parser.getNamespacePrefix(i)
-      if (predicates.keySet(ns)) {
-        collection.+=(ns -> parser.getNamespaceURI(i))
-      }
-    }
-
-    (0 until parser.getAttributeCount).map(i =>
-
-      if (predicates.isEmpty) {
-        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
-      } else if (predicates.keySet(parser.getAttributeLocalName(i)) || predicates.keySet(
-        parser.getAttributePrefix(i) + ":" + parser.getAttributeLocalName(i))) {
-        collection.+=(parser.getAttributeLocalName(i) -> parser.getAttributeValue(i))
-      }
-    )
-    collection
-  }.toMap
 
   def getUpdatedElement(xPath: Seq[String], attributes: Map[String, String], elemText: String)
                        (implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): String = {
