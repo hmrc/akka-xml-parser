@@ -26,9 +26,9 @@ import akka.stream.scaladsl._
 import akka.stream.testkit.scaladsl.TestSink
 import akka.stream.testkit.scaladsl.TestSource
 
-class XmlEncodingYankerStageSpec extends FlatSpec with BeforeAndAfter{
+class XmlEncodingYankerStageSpec extends FlatSpec with BeforeAndAfter {
 
-  it should "Work on chopped up xml prlogs" in {
+  def createStream() = {
     val as = ActorSystem("XmlEncodingYankerStage")
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ByteString](as)
@@ -36,7 +36,11 @@ class XmlEncodingYankerStageSpec extends FlatSpec with BeforeAndAfter{
     val chunk = XmlEncodingYankerStage.parser()
 
     //val (pub,sub) = source.via(chunk).alsoTo(Sink.foreach(a => println(a.utf8String))).toMat(sink)(Keep.both).run()(am)
-    val (pub,sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
+    source.via(chunk).toMat(sink)(Keep.both).run()(am)
+  }
+
+  it should "Work on chopped up xml prlogs" in {
+    val (pub,sub) = createStream()
     sub.request(10)
     pub.sendNext(ByteString("<?xml versi"))
     sub.expectNoMsg()
@@ -53,27 +57,32 @@ class XmlEncodingYankerStageSpec extends FlatSpec with BeforeAndAfter{
   }
 
   it should "Work on whole xml prologs" in {
-    val as = ActorSystem("XmlEncodingYankerStage")
-    val am = ActorMaterializer()(as)
-    val source = TestSource.probe[ByteString](as)
-    val sink = TestSink.probe[ByteString](as)
-    val chunk = XmlEncodingYankerStage.parser()
-
-    val (pub,sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
+    val (pub,sub) = createStream()
     sub.request(10)
     pub.sendNext(ByteString("""<?xml version="1.0" encoding="ISO-8859-1"?><GovTalkMessage xsi:schemaLocation="http://www.govtalk."""))
     sub.expectNext(ByteString("""<?xml version="1.0" encoding="UTF-8"?><GovTalkMessage xsi:schemaLocation="http://www.govtalk."""))
   }
 
+  it should "Let through xml without prolog1" in {
+    val (pub,sub) = createStream()
+    sub.request(10)
+    pub.sendNext(ByteString("<xml><bo"))
+    pub.sendNext(ByteString("dy><foo>"))
+    pub.sendNext(ByteString("foo</foo><bar>test</bar></body></xml>"))
+    sub.expectNext(ByteString("""<xml><body><foo>foo</foo><bar>test</bar></body></xml>"""))
+    pub.sendComplete()
+    sub.expectComplete()
+  }
+
+  it should "Let through xml without prolog" in {
+    val (pub,sub) = createStream()
+    sub.request(10)
+    pub.sendNext(ByteString("""<ns5:GovTalkMessage xmlns=""><ns5:EnvelopeVersion>2.0</ns5:EnvelopeVersion>"""))
+    sub.expectNext(ByteString("""<ns5:GovTalkMessage xmlns=""><ns5:EnvelopeVersion>2.0</ns5:EnvelopeVersion>"""))
+  }
 
   it should "Work on short strings" in {
-    val as = ActorSystem("XmlEncodingYankerStage")
-    val am = ActorMaterializer()(as)
-    val source = TestSource.probe[ByteString](as)
-    val sink = TestSink.probe[ByteString](as)
-    val chunk = XmlEncodingYankerStage.parser()
-
-    val (pub,sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
+    val (pub,sub) = createStream()
     sub.request(10)
     pub.sendNext(ByteString("""<?xml version="1.0" encoding="ISO-88"""))
     sub.expectNoMsg()

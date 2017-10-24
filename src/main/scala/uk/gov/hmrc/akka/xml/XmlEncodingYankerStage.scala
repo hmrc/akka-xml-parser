@@ -29,7 +29,7 @@ import akka.util.ByteString
   */
 object XmlEncodingYankerStage {
 
-  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*)"(.*?)\?>"""   //<?xml version="1.0" encoding="ISO-8859-1"?>
+  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
 
   def parser():
   Flow[ByteString, ByteString, NotUsed] = {
@@ -53,25 +53,27 @@ object XmlEncodingYankerStage {
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             val elem = grab(in)
-            if (!prologFinished ) {  //Buffer only the beginning part of the stream to check the prolog
+            if (!prologFinished) { //Buffer only the beginning part of the stream to check the prolog
               buffer ++= elem
               if (buffer.length > 45) { //<?xml version="1.0" encoding="ISO-8859-1"?>
                 val encodingRemoved = replceXmlEncoding(buffer)
-                push(out,encodingRemoved)
+                push(out, encodingRemoved)
                 prologFinished = true
                 buffer = ByteString.empty
-              } else {  //Didn't arrive enough data to check prolog yet
+              } else { //Didn't arrive enough data to check prolog yet
                 pull(in)
               }
             } else {
-              push(out,elem)
+              push(out, elem)
             }
 
           }
 
           override def onUpstreamFinish(): Unit = {
-            val encodingRemoved = replceXmlEncoding(buffer)
-            emit(out, encodingRemoved)
+            if (buffer.length > 0) {  //This will only happen if didn't arrive enough data into the buffer to send the first batch through
+              val encodingRemoved = replceXmlEncoding(buffer)
+              emit(out, encodingRemoved)
+            }
             completeStage()
           }
         })
@@ -83,7 +85,7 @@ object XmlEncodingYankerStage {
         })
 
         //Replace the encoding in the xml prolog, leave other parts untouched
-        private def replceXmlEncoding(in:ByteString): ByteString = ByteString(in.utf8String.replaceAll(XmlEncodingYankerStage.PROLOG_REGEX,"<?xml$1encoding=\"UTF-8\"$3?>"))
+        private def replceXmlEncoding(in: ByteString): ByteString = ByteString(in.utf8String.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"UTF-8\"$3?>"))
 
       }
   }
