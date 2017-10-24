@@ -31,12 +31,12 @@ object XmlEncodingYankerStage {
 
   val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
 
-  def parser():
+  def parser(replaceTo:String):
   Flow[ByteString, ByteString, NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser())
+    Flow.fromGraph(new StreamingXmlParser(replaceTo))
   }
 
-  private class StreamingXmlParser()
+  private class StreamingXmlParser(replaceTo:String)
     extends GraphStage[FlowShape[ByteString, ByteString]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -85,7 +85,7 @@ object XmlEncodingYankerStage {
         })
 
         //Replace the encoding in the xml prolog, leave other parts untouched
-        private def replceXmlEncoding(in: ByteString): ByteString = ByteString(in.utf8String.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"UTF-8\"$3?>"))
+        private def replceXmlEncoding(in: ByteString): ByteString = ByteString(in.utf8String.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\""+replaceTo+"\"$3?>"))
 
       }
   }

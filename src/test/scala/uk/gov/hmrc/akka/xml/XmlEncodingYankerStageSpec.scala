@@ -33,7 +33,7 @@ class XmlEncodingYankerStageSpec extends FlatSpec with BeforeAndAfter {
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ByteString](as)
-    val chunk = XmlEncodingYankerStage.parser()
+    val chunk = XmlEncodingYankerStage.parser("UTF-8")
 
     //val (pub,sub) = source.via(chunk).alsoTo(Sink.foreach(a => println(a.utf8String))).toMat(sink)(Keep.both).run()(am)
     source.via(chunk).toMat(sink)(Keep.both).run()(am)
