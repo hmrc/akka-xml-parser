@@ -27,16 +27,18 @@ import akka.util.ByteString
   * This stage does the unthinkable and replaces the encoding in the xml prolog without actually changing the encoding (this was the requirement)
   * Created by gabor dorcsinecz on 23/10/17.
   */
-object XmlEncodingYankerStage {
+object XmlEncodingStage {
 
-  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
+  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*?)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
+  val ENCODING_EXTRACTOR = """<\?xml.*?encoding="(.*?)".*""".r
+  val UTF8 = "UTF-8"
 
-  def parser(replaceTo:String):
+  def parser(convertEncodingTo: String):
   Flow[ByteString, ByteString, NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(replaceTo))
+    Flow.fromGraph(new StreamingXmlParser(convertEncodingTo))
   }
 
-  private class StreamingXmlParser(replaceTo:String)
+  private class StreamingXmlParser(replaceTo: String)
     extends GraphStage[FlowShape[ByteString, ByteString]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -48,14 +50,15 @@ object XmlEncodingYankerStage {
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new GraphStageLogic(shape) {
         private var buffer = ByteString.empty
-        private var prologFinished = false
+        private var prologFinished = false //
+        private var incomingEncoding = "UTF-8"
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
             val elem = grab(in)
             if (!prologFinished) { //Buffer only the beginning part of the stream to check the prolog
               buffer ++= elem
-              if (buffer.length > 45) { //<?xml version="1.0" encoding="ISO-8859-1"?>
+              if (buffer.length > 45) { //Do we have a prolog: <?xml version="1.0" encoding="ISO-8859-1"?>
                 val encodingRemoved = replceXmlEncoding(buffer)
                 push(out, encodingRemoved)
                 prologFinished = true
@@ -63,14 +66,14 @@ object XmlEncodingYankerStage {
               } else { //Didn't arrive enough data to check prolog yet
                 pull(in)
               }
-            } else {
-              push(out, elem)
+            } else {  //The prolog already went through, all we need now is to convert the encoding
+              push(out, convertEncoding(elem,incomingEncoding,replaceTo) )
             }
 
           }
 
           override def onUpstreamFinish(): Unit = {
-            if (buffer.length > 0) {  //This will only happen if didn't arrive enough data into the buffer to send the first batch through
+            if (buffer.length > 0) { //This will only happen if didn't arrive enough data into the buffer to send the first batch through
               val encodingRemoved = replceXmlEncoding(buffer)
               emit(out, encodingRemoved)
             }
@@ -85,9 +88,30 @@ object XmlEncodingYankerStage {
         })
 
         //Replace the encoding in the xml prolog, leave other parts untouched
-        private def replceXmlEncoding(in: ByteString): ByteString = ByteString(in.utf8String.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\""+replaceTo+"\"$3?>"))
+        private def replceXmlEncoding(in: ByteString): ByteString = {
+          incomingEncoding = in.utf8String match {  //Extract the encoding from the
+            case ENCODING_EXTRACTOR(enc) => enc
+            case _ => "UTF-8"
+          }
 
+          (incomingEncoding == replaceTo || incomingEncoding == "") match {
+            case true =>
+              in
+            case false =>
+              val reEncoded = in.decodeString(incomingEncoding)
+              val replaced = reEncoded.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"" + replaceTo + "\"$3?>")
+              ByteString.fromString(replaced, replaceTo)
+          }
+        }
+
+        def convertEncoding(in: ByteString, encodingFrom: String, encodingTo: String): ByteString = {
+          (encodingFrom == encodingTo) match {
+            case true => in
+            case false => ByteString.fromString(in.decodeString(encodingFrom), encodingTo)
+          }
+        }
       }
+
   }
 
 }
