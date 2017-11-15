@@ -213,7 +213,6 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     * @return
     */
   def getBrokenMessage(originalEncoding: String, message2Break:String): List[ByteString] = {
-    //val message = getIncomingMessage(originalEncoding)
     val rnd = scala.util.Random
     var sum = 0
     val lengths = new scala.collection.mutable.ArrayBuffer[Int]()
@@ -231,13 +230,5 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     }.toList
   }
 
-//  def getMessageWithProlog(encoding: String): String = {
-//    "<?xml version=\"1.0\" encoding=\"" + encoding + "\"?><Body>£££££</Body></GovTalkMessage>"
-//
-//  }
-//
-//  def getExpectedMessage(encoding: String, message:String): ByteString = {
-//    ByteString.fromString(message, encoding)
-//  }
 
 }

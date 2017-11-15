@@ -58,7 +58,7 @@ object XmlEncodingStage {
             val elem = grab(in)
             if (!prologFinished) { //Buffer only the beginning part of the stream to check the prolog
               buffer ++= elem
-              if (buffer.length > 45) { //<?xml version="1.0" encoding="ISO-8859-1"?>
+              if (buffer.length > 45) { //Do we have a prolog: <?xml version="1.0" encoding="ISO-8859-1"?>
                 val encodingRemoved = replceXmlEncoding(buffer)
                 push(out, encodingRemoved)
                 prologFinished = true
@@ -66,7 +66,7 @@ object XmlEncodingStage {
               } else { //Didn't arrive enough data to check prolog yet
                 pull(in)
               }
-            } else {
+            } else {  //The prolog already went through, all we need now is to convert the encoding
               push(out, convertEncoding(elem,incomingEncoding,replaceTo) )
             }
 
@@ -107,7 +107,6 @@ object XmlEncodingStage {
         def convertEncoding(in: ByteString, encodingFrom: String, encodingTo: String): ByteString = {
           (encodingFrom == encodingTo) match {
             case true => in
-            //case false => ByteString(new String(in.decodeString(encodingFrom).getBytes(encodingFrom), encodingTo))
             case false => ByteString.fromString(in.decodeString(encodingFrom), encodingTo)
           }
         }
