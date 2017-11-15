@@ -202,4 +202,11 @@ class XMLParserXmlDeleteSpec extends FlatSpec
       r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
     }
   }
+
+  it should "be able to delete parts of a ByteString" in {
+    val pdf = new ParsingDataFunctions {}
+    val remainingBytes = pdf.deleteBytes(ByteString.fromString("1234567890"),2,5,7)
+    remainingBytes.utf8String shouldBe "345890"
+  }
+
 }
