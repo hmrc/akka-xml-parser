@@ -89,20 +89,20 @@ object XmlEncodingStage {
         })
 
         //Replace the encoding in the xml prolog, leave other parts untouched
-        private def replceXmlEncoding(in: ByteString): ByteString = {
-          incomingEncoding = in.utf8String match {  //Extract the encoding from the
+        private def replceXmlEncoding(incomingBytes: ByteString): ByteString = {
+          incomingEncoding = incomingBytes.utf8String match {  //Extract the encoding from the
             case ENCODING_EXTRACTOR(enc) => enc
             case _ => "UTF-8"  //Either there is no xml prolog or the prolog doesn't contain an encoding attribute
           }
 
           (incomingEncoding == replaceTo) match {
             case true =>
-              in
+              incomingBytes
             case false =>
-              val reEncoded = in.decodeString(incomingEncoding)
+              val reEncoded = incomingBytes.decodeString(incomingEncoding)
               val replaced = reEncoded.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"" + replaceTo + "\"$3?>")
               val encodingEnsured = replaced match {
-                case ENCODING_EXTRACTOR(enc) =>   //If there is an encoding in the prolog then all is fine
+                case ENCODING_EXTRACTOR(_*) =>   //If there is an encoding in the prolog then all is fine
                   replaced
                 case _ => //There was no encoding attribute in the prolog, we put in one
                   reEncoded.replaceAll(PROLOG_REGEX_ALL, "<?xml$1 encoding=\"" + replaceTo + "\"?>")
