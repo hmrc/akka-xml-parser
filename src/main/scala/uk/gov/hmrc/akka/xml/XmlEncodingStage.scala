@@ -29,8 +29,9 @@ import akka.util.ByteString
   */
 object XmlEncodingStage {
 
-  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*?)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
   val ENCODING_EXTRACTOR = """<\?xml.*?encoding="(.*?)".*""".r
+  val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*?)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
+  val PROLOG_REGEX_ALL = """<\?xml(.*?)\?>"""
   val UTF8 = "UTF-8"
 
   def parser(convertEncodingTo: String):
@@ -59,7 +60,7 @@ object XmlEncodingStage {
             if (!prologFinished) { //Buffer only the beginning part of the stream to check the prolog
               buffer ++= elem
               if (buffer.length > 45) { //Do we have a prolog: <?xml version="1.0" encoding="ISO-8859-1"?>
-                val encodingRemoved = replceXmlEncoding(buffer)
+                val encodingRemoved = replaceXmlEncoding(buffer)
                 push(out, encodingRemoved)
                 prologFinished = true
                 buffer = ByteString.empty
@@ -74,7 +75,7 @@ object XmlEncodingStage {
 
           override def onUpstreamFinish(): Unit = {
             if (buffer.length > 0) { //This will only happen if didn't arrive enough data into the buffer to send the first batch through
-              val encodingRemoved = replceXmlEncoding(buffer)
+              val encodingRemoved = replaceXmlEncoding(buffer)
               emit(out, encodingRemoved)
             }
             completeStage()
@@ -88,19 +89,25 @@ object XmlEncodingStage {
         })
 
         //Replace the encoding in the xml prolog, leave other parts untouched
-        private def replceXmlEncoding(in: ByteString): ByteString = {
-          incomingEncoding = in.utf8String match {  //Extract the encoding from the
+        private def replaceXmlEncoding(incomingBytes: ByteString): ByteString = {
+          incomingEncoding = incomingBytes.utf8String match {  //Extract the encoding from the
             case ENCODING_EXTRACTOR(enc) => enc
-            case _ => "UTF-8"
+            case _ => "UTF-8"  //Either there is no xml prolog or the prolog doesn't contain an encoding attribute
           }
 
-          (incomingEncoding == replaceTo || incomingEncoding == "") match {
+          (incomingEncoding == replaceTo) match {
             case true =>
-              in
+              incomingBytes
             case false =>
-              val reEncoded = in.decodeString(incomingEncoding)
+              val reEncoded = incomingBytes.decodeString(incomingEncoding)
               val replaced = reEncoded.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"" + replaceTo + "\"$3?>")
-              ByteString.fromString(replaced, replaceTo)
+              val encodingEnsured = replaced match {
+                case ENCODING_EXTRACTOR(_*) =>   //If there is an encoding in the prolog then all is fine
+                  replaced
+                case _ => //There was no encoding attribute in the prolog, we put in one
+                  reEncoded.replaceAll(PROLOG_REGEX_ALL, "<?xml$1 encoding=\"" + replaceTo + "\"?>")
+              }
+              ByteString.fromString(encodingEnsured, replaceTo)
           }
         }
 

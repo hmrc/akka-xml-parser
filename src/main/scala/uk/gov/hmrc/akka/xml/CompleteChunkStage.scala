@@ -33,6 +33,10 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Try}
 
 /**
+  * This Stage will only let whole xml tags through or partial or whole text nodes.
+  * For example if the incoming xml is:  <aa><bb><c then the output will be <aa><bb> and <c will be cached waiting for the next incoming data
+  * Say next time the incoming xml part is: c>ABCD  then the output will be <cc>ABCD  You can see how the xml tag is whole but text is cut in half
+  * The purpose of doing this is that in a downstream stage we can reliably parse xml tags, without worrying about half finished tags.
   * Created by abhishek on 28/02/17.
   */
 object CompleteChunkStage {

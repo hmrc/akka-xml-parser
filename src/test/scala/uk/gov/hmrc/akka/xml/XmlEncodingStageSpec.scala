@@ -113,8 +113,8 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     messages.foreach(pub.sendNext _)
     pub.sendComplete() //Make that fold happen
     sub.expectNext(ByteString.fromString("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><Body>£££££</Body></GovTalkMessage>", "ISO-8859-1"))
-
   }
+
   it should "Convert Latin-1 encoding to UTF-8 for messages that are broken up into peaces" in {
     val msg = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><Body>£££££</Body></GovTalkMessage>"
     val messages = getBrokenMessage("ISO-8859-1",msg)
@@ -125,6 +125,16 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     sub.expectNext(ByteString.fromString("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Body>£££££</Body></GovTalkMessage>", "UTF-8"))
   }
 
+
+  it should "Convert default (UTF-8) encoding to Latin-1 in case no encoding was defined in the prolog" in {
+    val msg = "<?xml version=\"1.0\"?><Body>£££££</Body></GovTalkMessage>"
+    val messages = getBrokenMessage("UTF-8",msg)
+    val (pub, sub) = createStreamFold("ISO-8859-1")
+    sub.request(messages.length)
+    messages.foreach(pub.sendNext _)
+    pub.sendComplete() //Make that fold happen
+    sub.expectNext(ByteString.fromString("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><Body>£££££</Body></GovTalkMessage>", "ISO-8859-1"))
+  }
 
   it should "In the absence of prolog, we suppose UTF-8 for short messages" in {
     val msg = "<Body>£££££</Body></GovTalkMessage>"
