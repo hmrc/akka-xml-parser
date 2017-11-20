@@ -43,7 +43,7 @@ class ParsingStageSpec extends FlatSpec {
     (ByteString(in), Set.empty[XMLElement])
   }
 
-  it should "Extract XMLInstruction from a xml broken into peaces (even xml tags are broken up)" in {
+  it should "Extract XMLInstruction from a xml broken into pieces (even xml tags are broken up)" in {
     val idHeader = XMLExtract(List("xml","header","id"))
     val aaHeader = XMLExtract(List("xml","header","aa"))
 
