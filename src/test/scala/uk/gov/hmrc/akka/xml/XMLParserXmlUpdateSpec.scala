@@ -289,8 +289,6 @@ class XMLParserXmlUpdateSpec
     val expected = """<xml><foo><one>one</one><two>two</two></foo></xml>"""
 
     whenReady(source.runWith(parseToByteString(instructions))) { r =>
-
-      println(r.utf8String)
       r.utf8String shouldBe expected
     }
   }
