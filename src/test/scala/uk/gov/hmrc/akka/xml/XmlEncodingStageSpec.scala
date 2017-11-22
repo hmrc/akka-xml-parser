@@ -160,7 +160,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
   }
 
 
-  "Withouth the encoding changer stage the system" should "reject ISO-8859-1 encoding in the xml prolog regardless of actual encoding" in {
+  "Without the encoding changer stage the system" should "reject ISO-8859-1 encoding in the xml prolog regardless of actual encoding" in {
     val message1 = """<?xml version="1.0" encoding="ISO-8859-1"?><GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Body>££££££££££</Body></GovTalkMessage>"""
     val paths = Seq[XMLInstruction](
       XMLExtract(Seq("GovTalkMessage"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"))
@@ -176,7 +176,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     }
   }
 
-  "Withouth the encoding changer stage the system " should "reject ISO-8859-1 encoded special characters" in { //But in fact it will just parse it fine
+  "Without the encoding changer stage the system " should "reject ISO-8859-1 encoded special characters" in { //But in fact it will just parse it fine
     val message1 =
       """<?xml version="1.0" encoding="UTF-8"?><GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Body>Here: úúú</Body></GovTalkMessage>"""
     val paths = Seq[XMLInstruction](

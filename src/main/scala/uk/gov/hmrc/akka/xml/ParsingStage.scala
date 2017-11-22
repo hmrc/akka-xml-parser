@@ -112,7 +112,7 @@ object ParsingStage {
               (completedInstructions.count(x => x.isInstanceOf[XMLValidate]) != instructions.count(x => x.isInstanceOf[XMLValidate]))) {
               Failure(new IncompleteXMLValidationException)
             }
-            else Success()
+            else Success(Unit)
           } yield {
             emitStage()
           }
