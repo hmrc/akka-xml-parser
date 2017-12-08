@@ -34,9 +34,6 @@ trait XMLParserFixtures {
     implicit val mat = ActorMaterializer()
 
     def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None,validationMaxSize: Option[Int] = None) = Flow[ByteString]
-//      .via(MinimumChunk.parser(15))
-//      .via(CompleteChunkStage.parser(maxSize))
-//      .via(ParsingStage.parser(instructions, validationMaxSize, 10))
       .via(BarsingStage.parser(instructions,validationMaxSize,maxSize))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
@@ -57,9 +54,6 @@ trait XMLParserFixtures {
 
     def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false, validationMaxSize: Option[Int] = None)
     = Flow[ByteString]
-//      .via(MinimumChunk.parser(15))
-//      .via(CompleteChunkStage.parser(None, insertPrologueIfNotPresent))
-//      .via(ParsingStage.parser(instructions))
       .via(BarsingStage.parser(instructions, validationMaxSize))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)

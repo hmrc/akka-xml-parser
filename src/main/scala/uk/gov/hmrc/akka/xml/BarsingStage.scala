@@ -51,16 +51,16 @@ object BarsingStage {
   /**
     *
     * @param instructions
-    * @param validationMaxSize
+    * @param maxParsingSize
     * @param packageMaxSize
     * @return
     */
-  def parser(instructions: Seq[XMLInstruction], validationMaxSize: Option[Int] = None, packageMaxSize: Option[Int] = None)
+  def parser(instructions: Seq[XMLInstruction], maxParsingSize: Option[Int] = None, packageMaxSize: Option[Int] = None)
   : Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, validationMaxSize))
+    Flow.fromGraph(new StreamingXmlParser(instructions, maxParsingSize))
   }
 
-  private class StreamingXmlParser(instructions: Seq[XMLInstruction], validationMaxSize: Option[Int] = None)
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxParsingSize: Option[Int] = None)
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -132,7 +132,7 @@ object BarsingStage {
               push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               streamBuffer.clear()
 
-              val isValidationLimitReached = totalProcessedLength > validationMaxSize.getOrElse(MAX_PARSE_LENGTH)
+              val isValidationLimitReached = totalProcessedLength > maxParsingSize.getOrElse(MAX_PARSE_LENGTH)
               if (isValidationLimitReached) { //Stop parsing when the max length was reached
                 continueParsing = false
                 parser.getInputFeeder.endOfInput()
