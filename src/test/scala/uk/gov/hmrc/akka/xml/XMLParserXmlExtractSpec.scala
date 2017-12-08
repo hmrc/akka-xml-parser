@@ -793,6 +793,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
         r shouldBe t
       }
     }
-
   }
+
+
 }
