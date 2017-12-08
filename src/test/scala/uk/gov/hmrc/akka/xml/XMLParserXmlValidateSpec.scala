@@ -22,9 +22,6 @@ import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
-import play.api.libs.iteratee.{Enumeratee, Enumerator, Iteratee}
-
-import scala.util.control.NoStackTrace
 
 /**
   * Created by abhishek on 15/12/16.
@@ -203,27 +200,27 @@ class XMLParserXmlValidateSpec extends FlatSpec
     }
   }
 
-//  it should "validate over multiple chunks - making sure that the END_DOCUMENT event is not calling the validating function multiple times" in {
-//    val source = Source.single(
-//      ByteString("<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"))
-//    val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<root><foo>test</foo>")
-//      None
-//    else Some(new ParserValidationError {})
-//    val paths = Seq[XMLInstruction](
-//      XMLExtract(Seq("xml", "root", "foo")),
-//      XMLExtract(Seq("xml", "root", "taz")),
-//      XMLValidate(Seq("xml", "root"), Seq("xml", "root", "body"), validatingFunction)
-//    )
-//
-//    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
-//      r shouldBe Set(
-//        XMLElement(List("xml", "root", "foo"), Map(),Some("test")),
-//        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
-//      )
-//    }
-//    whenReady(source.runWith(parseToByteString(paths))) { r =>
-//      r.utf8String shouldBe "<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"
-//    }
-//  }
+  it should "validate over multiple chunks - making sure that the END_DOCUMENT event is not calling the validating function multiple times" in {
+    val source = Source.single(
+      ByteString("<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"))
+    val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<root><foo>test</foo>")
+      None
+    else Some(new ParserValidationError {})
+    val paths = Seq[XMLInstruction](
+      XMLExtract(Seq("xml", "root", "foo")),
+      XMLExtract(Seq("xml", "root", "taz")),
+      XMLValidate(Seq("xml", "root"), Seq("xml", "root", "body"), validatingFunction)
+    )
+
+    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+      r shouldBe Set(
+        XMLElement(List("xml", "root", "foo"), Map(),Some("test")),
+        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+      )
+    }
+    whenReady(source.runWith(parseToByteString(paths))) { r =>
+      r.utf8String shouldBe "<xml><root><foo>test</foo><body><taz>bad</taz></body></root></xml>"
+    }
+  }
 
 }

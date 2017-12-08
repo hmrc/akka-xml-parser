@@ -163,158 +163,139 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     s
   }
 
-  //  it should "perform through all stages with config settings from TE" in {
-  //    val testFile = scala.io.Source.fromFile("submission24M.xml")
-  //    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
-  //    val messages = getBrokenMessage(msg, 500)
-  //
-  //    val as = ActorSystem("PerformanceTest")
-  //    val am = ActorMaterializer()(as)
-  //    //val source = TestSource.probe[ByteString](as)
-  //    //val sink = TestSink.probe[Set[XMLElement]](as)
-  //
-  //    val timeStarted = System.currentTimeMillis()
-  //
-  //    //source.map(a => {println("<< " + a.decodeString("UTF-8"));a}).via(chunk).alsoTo(Sink.foreach(a => println(">> " + a))).toMat(sink)(Keep.both).run()(am)  //Use for debugging
-  //    val wholeSystem = Flow[ByteString]
-  //      .via(MinimumChunk.parser(1024))
-  //      .via(CompleteChunkStage.parser(Some(25000000)))
-  //      .via(ParsingStage.parser(submissionInstructions, Some(1500), 0))
-  //      .via(Flow[(ByteString, Set[XMLElement])].map(x => x._2))
-  //      //.map { a => println(">> " + a); a }
-  //
-  //      //.toMat(sink)(Keep.both).run()(am)
-  //
-  //    val source = Source.queue[ByteString](messages.size, OverflowStrategy.backpressure)
-  //    //val queue = Source.queue(messages.size, OverflowStrategy.backpressure).via(wholeSystem).to(Sink.foreach(println)).run()(am)
-  //    //val queue = source.via(wholeSystem).to(Sink.fold(Set.empty[XMLElement])(_ ++ _)).run()(am)
-  //    val (queue,result) = source.via(wholeSystem).toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.both).run()(am)
-  //    messages.foreach(queue.offer _)
-  //    queue.complete()
-  //
-  //    //source.mapMaterializedValue()
-  //    result.onComplete{
-  //      case Success(elements) =>
-  //        println("Results: " + elements)
-  //        val duration = (System.currentTimeMillis() - timeStarted)
-  //        println("Runtime: " + duration)
-  //      case Failure(t) =>
-  //        println("ERROR: " + t)
-  //    }
-  //    //println("###res: " + result)
-  //  }
+  ignore should "perform through all stages with config settings from TE" in {
+    val testFile = scala.io.Source.fromFile("submission24M.xml")
+    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
+    val messages = getBrokenMessage(msg, 500)
+
+    val as = ActorSystem("PerformanceTest")
+    val am = ActorMaterializer()(as)
+
+    val timeStarted = System.currentTimeMillis()
+
+    val wholeSystem = Flow[ByteString]
+      .via(MinimumChunk.parser(1024))
+      .via(CompleteChunkStage.parser(Some(25000000)))
+      .via(ParsingStage.parser(submissionInstructions, Some(1500), 0))
+      .via(Flow[(ByteString, Set[XMLElement])].map(x => x._2))
+
+    val source = Source.queue[ByteString](messages.size, OverflowStrategy.backpressure)
+    val (queue, result) = source.via(wholeSystem).toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.both).run()(am)
+    messages.foreach(queue.offer _)
+    queue.complete()
+
+    result.onComplete {
+      case Success(elements) =>
+        println("Results: " + elements)
+        val duration = (System.currentTimeMillis() - timeStarted)
+        println("Runtime: " + duration)
+      case Failure(t) =>
+        println("ERROR: " + t)
+    }
+  }
 
 
-  //  "ParsingStage" should "be performant on large messages" in {
-  //    val testFile = scala.io.Source.fromFile("submission24M.xml")
-  //    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
-  //    //val input = ByteString.fromString(fileString)
-  //
-  //    val as = ActorSystem("PerformanceTest")
-  //    val am = ActorMaterializer()(as)
-  //    val source = TestSource.probe[ParsingData](as)
-  //    val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
-  //    val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
-  //
-  //    val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach{a => if (a._2.size > 0) {println(">> " + a._2)} }).toMat(sink)(Keep.both).run()(am)
-  //    //val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach(a => println(">> " + a._1.decodeString("UTF-8") + " | " + a._2))).toMat(sink)(Keep.both).run()(am)
-  //    //val (pub, sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
-  //
-  //    val messages = getBrokenMessage(msg, 500)
-  //    sub.request(messages.length)
-  //    var totalLength = 0
-  //    messages.foreach{a =>
-  //      totalLength += a.length
-  //      pub.sendNext(ParsingData(a, Set.empty, totalLength))
-  //    }
-  //    pub.sendComplete()
-  //    //sub.expectComplete()
-  //  }
+  ignore should "ParsingStage be performant on large messages" in {
+    val testFile = scala.io.Source.fromFile("submission24M.xml")
+    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
+
+    val as = ActorSystem("PerformanceTest")
+    val am = ActorMaterializer()(as)
+    val source = TestSource.probe[ParsingData](as)
+    val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
+    val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
+
+    val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach { a => if (a._2.size > 0) {
+      println(">> " + a._2)
+    }
+    }).toMat(sink)(Keep.both).run()(am)
+
+    val messages = getBrokenMessage(msg, 500)
+    sub.request(messages.length)
+    var totalLength = 0
+    messages.foreach { a =>
+      totalLength += a.length
+      pub.sendNext(ParsingData(a, Set.empty, totalLength))
+    }
+    pub.sendComplete()
+    //sub.expectComplete()
+  }
 
 
-//  "ParsingStage" should "be performant on large messages" in {
-//    val testFile = scala.io.Source.fromFile("submission24M.xml")
-//    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
-//    //val input = ByteString.fromString(fileString)
-//
-//    val as = ActorSystem("PerformanceTest")
-//    val am = ActorMaterializer()(as)
-//    val timeStarted = System.currentTimeMillis()
-//    runTest(10)
-//
-//    def runTest(runCounter:Int) {
-//      if (runCounter <= 0) {
-//        val duration = (System.currentTimeMillis() - timeStarted) / 1000
-//        println("###Runtime: " + duration)
-//        return
-//      }
-//      val source = TestSource.probe[ParsingData](as)
-//      //val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
-//      val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
-//
-//      val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach{a => if (a._2.size > 0) {println(">> " + a._2)} }).toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach(a => println(">> " + a._1.decodeString("UTF-8") + " | " + a._2))).toMat(sink)(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
-//
-//      val messages = getBrokenMessage(msg, 500)
-//      var totalLength = 0
-//      messages.foreach { a =>
-//        totalLength += a.length
-//        pub.sendNext(ParsingData(a, Set.empty, totalLength))
-//      }
-//      pub.sendComplete()
-//      sub.onComplete {
-//        case Success(elems) =>
-//          println(">> " + elems)
-//          runTest(runCounter -1)
-//        case Failure(ex) =>
-//          println("###Error: " + ex)
-//      }
-//    }
-//  }
+  ignore should "ParsingStage be performant on large messages in several iterations" in {
+    val testFile = scala.io.Source.fromFile("submission24M.xml")
+    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
 
-//  "BarsingStage" should "be performant on large messages" in {
-//    val testFile = scala.io.Source.fromFile("submission24M.xml")
-//    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
-//    //val input = ByteString.fromString(fileString)
-//
-//    val as = ActorSystem("PerformanceTest")
-//    val am = ActorMaterializer()(as)
-//    val timeStarted = System.currentTimeMillis()
-//    runTest(10)
-//
-//    def runTest(runCounter:Int) {
-//      if (runCounter <= 0) {
-//        val duration = (System.currentTimeMillis() - timeStarted) / 1000
-//        println("###Runtime: " + duration)
-//        return
-//      }
-//      val source = TestSource.probe[ByteString](as)
-//      //val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
-//      val chunk = BarsingStage.parser(submissionInstructions, Some(2000))
-//
-//      val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach{a => if (a._2.size > 0) {println(">> " + a._2)} }).toMat(Sink.fold(Set.empty[XMLElement])(_ ++ _))(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach(a => println(">> " + a._1.decodeString("UTF-8") + " | " + a._2))).toMat(sink)(Keep.both).run()(am)
-//      //val (pub, sub) = source.via(chunk).toMat(sink)(Keep.both).run()(am)
-//
-//      val messages = getBrokenMessage(msg, 500)
-//      var totalLength = 0
-//      messages.foreach { data =>
-//        totalLength += data.length
-//        pub.sendNext(data)
-//      }
-//      pub.sendComplete()
-//      sub.onComplete {
-//        case Success(elems) =>
-//          println(">> " + elems)
-//          runTest(runCounter -1)
-//        case Failure(ex) =>
-//          println("###Error: " + ex)
-//      }
-//    }
-//  }
+    val as = ActorSystem("PerformanceTest")
+    val am = ActorMaterializer()(as)
+    val timeStarted = System.currentTimeMillis()
+    runTest(10)
+
+    def runTest(runCounter: Int) {
+      if (runCounter <= 0) {
+        val duration = (System.currentTimeMillis() - timeStarted) / 1000
+        println("###Runtime: " + duration)
+        return
+      }
+      val source = TestSource.probe[ParsingData](as)
+      val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
+
+      val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
+
+      val messages = getBrokenMessage(msg, 500)
+      var totalLength = 0
+      messages.foreach { a =>
+        totalLength += a.length
+        pub.sendNext(ParsingData(a, Set.empty, totalLength))
+      }
+      pub.sendComplete()
+      sub.onComplete {
+        case Success(elems) =>
+          println(">> " + elems)
+          runTest(runCounter - 1)
+        case Failure(ex) =>
+          println("###Error: " + ex)
+      }
+    }
+  }
+
+  ignore should "BarsingStage be performant on large messages in several iterations" in {
+    val testFile = scala.io.Source.fromFile("submission24M.xml")
+    val msg = try testFile.getLines().mkString("\n") finally testFile.close()
+    //val input = ByteString.fromString(fileString)
+
+    val as = ActorSystem("PerformanceTest")
+    val am = ActorMaterializer()(as)
+    val timeStarted = System.currentTimeMillis()
+    runTest(10)
+
+    def runTest(runCounter: Int) {
+      if (runCounter <= 0) {
+        val duration = (System.currentTimeMillis() - timeStarted) / 1000
+        println("###Runtime: " + duration)
+        return
+      }
+      val source = TestSource.probe[ByteString](as)
+      val chunk = BarsingStage.parser(submissionInstructions, Some(2000))
+
+      val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
+
+      val messages = getBrokenMessage(msg, 500)
+      var totalLength = 0
+      messages.foreach { data =>
+        totalLength += data.length
+        pub.sendNext(data)
+      }
+      pub.sendComplete()
+      sub.onComplete {
+        case Success(elems) =>
+          println(">> " + elems)
+          runTest(runCounter - 1)
+        case Failure(ex) =>
+          println("###Error: " + ex)
+      }
+    }
+  }
 
   /**
     * Break up the xml to random peaces, so we could simulate a streaming data

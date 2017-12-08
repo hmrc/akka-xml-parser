@@ -32,6 +32,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by abhishek on 28/02/17.
   */
+@deprecated
 object ParsingStage {
   val MALFORMED_STATUS = "Malformed"
   val STREAM_MAX_SIZE = "Stream max size"

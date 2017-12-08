@@ -25,6 +25,7 @@ import akka.util.ByteString
 /**
   * Created by abhishek on 01/03/17.
   */
+@deprecated
 object MinimumChunk {
 
   def parser(minimumChunkSize: Int):

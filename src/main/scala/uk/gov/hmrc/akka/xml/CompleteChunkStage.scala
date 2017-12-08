@@ -39,6 +39,7 @@ import scala.util.{Failure, Try}
   * The purpose of doing this is that in a downstream stage we can reliably parse xml tags, without worrying about half finished tags.
   * Created by abhishek on 28/02/17.
   */
+@deprecated
 object CompleteChunkStage {
   val MALFORMED_STATUS = "Malformed"
   val STREAM_MAX_SIZE = "Stream max size"
