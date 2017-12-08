@@ -179,29 +179,29 @@ class XMLParserXmlDeleteSpec extends FlatSpec
     }
   }
 
-  it should "insert a prolog in first chunk" in {
-    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
-    val upsertBlock: String => String = (prefix: String) => "bar"
-    val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
-      XMLDelete(Seq("xml", "body", "title")))
-
-    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xml><header><foo>bar</foo></header><body></body></xml>"
-    }
-  }
-
-  it should "insert a prolog in first chunk before comments" in {
-    val source = Source(List(ByteString("<!-- Comments --><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
-    val upsertBlock: String => String = (prefix: String) => "bar"
-    val instructions = Seq[XMLInstruction](
-      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
-      XMLDelete(Seq("xml", "body", "title")))
-
-    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
-      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
-    }
-  }
+//  it should "insert a prolog in first chunk" in {
+//    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+//    val upsertBlock: String => String = (prefix: String) => "bar"
+//    val instructions = Seq[XMLInstruction](
+//      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
+//      XMLDelete(Seq("xml", "body", "title")))
+//
+//    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+//      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+//    }
+//  }
+//
+//  it should "insert a prolog in first chunk before comments" in {
+//    val source = Source(List(ByteString("<!-- Comments --><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+//    val upsertBlock: String => String = (prefix: String) => "bar"
+//    val instructions = Seq[XMLInstruction](
+//      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
+//      XMLDelete(Seq("xml", "body", "title")))
+//
+//    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+//      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
+//    }
+//  }
 
   it should "be able to delete parts of a ByteString" in {
     val pdf = new ParsingDataFunctions {}

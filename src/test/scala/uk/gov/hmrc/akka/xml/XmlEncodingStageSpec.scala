@@ -176,7 +176,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     }
   }
 
-  "Without the encoding changer stage the system " should "reject ISO-8859-1 encoded special characters" in { //But in fact it will just parse it fine
+  "Without the encoding changer stage the system " should "reject ISO-8859-1 encoded special characters" in {
     val message1 =
       """<?xml version="1.0" encoding="UTF-8"?><GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><Body>Here: úúú</Body></GovTalkMessage>"""
     val paths = Seq[XMLInstruction](
@@ -188,7 +188,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
       def seq2s(in: XMLElement): String = in.xPath.toString
 
       val orderedList = r.toList.sortWith((a, b) => seq2s(a) > seq2s(b))
-      orderedList(0).value.get should startWith("Here")
+      orderedList(0).value.get should startWith(BarsingStage.MALFORMED_STATUS)
     }
   }
 
