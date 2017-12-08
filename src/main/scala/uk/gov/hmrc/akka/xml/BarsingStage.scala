@@ -253,14 +253,14 @@ object BarsingStage {
                           continueParsing = false
                           completedInstructions += instruction
 
-                        case x =>
+                        case _ =>
                       }
                     }
 
                   case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
                     streamBuffer ++= extractBytes(parsingData, chunkOffset, start)
                     chunkOffset = end
-                  case x =>
+                  case _ =>
                 })
                 advanceParser()
 
@@ -309,7 +309,7 @@ object BarsingStage {
                     case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
                       chunkOffset = end
 
-                    case x =>
+                    case _ =>
                   }
                 })
                 bufferedText.clear()
@@ -354,7 +354,7 @@ object BarsingStage {
 
               case XMLStreamConstants.END_DOCUMENT =>
                 for {
-                  i <- instructions.diff(completedInstructions).collect { case e: XMLValidate => e }
+                  i <- instructions.diff(completedInstructions).collect { case v: XMLValidate => v }
                 } yield {
                   validators.foreach {
                     case (s@XMLValidate(_, _, f), testData) =>
