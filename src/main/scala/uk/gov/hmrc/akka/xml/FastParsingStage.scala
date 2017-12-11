@@ -47,6 +47,7 @@ object FastParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = '<'.toByte
+
   /**
     *
     * @param instructions
@@ -55,10 +56,10 @@ object FastParsingStage {
     */
   def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
   : Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions,maxPackageSize))
+    Flow.fromGraph(new StreamingXmlParser(instructions, maxPackageSize))
   }
 
-  private class StreamingXmlParser(instructions: Seq[XMLInstruction],maxPackageSize: Option[Int] = None)
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -74,23 +75,23 @@ object FastParsingStage {
 
         private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
         private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
-        var parsingData = ByteString.empty   //Store the data here for parsing
+        var parsingData = ByteString.empty //Store the data here for parsing
         var isCharacterBuffering = false
         var chunkOffset = 0 //A pointer in the current data chunk
-        var continueParsing = true   //When we reached our parsing length/target we don't want to parse anymore
+        var continueParsing = true //When we reached our parsing length/target we don't want to parse anymore
         var elementBlockExtracting: Boolean = false
-        var totalProcessedLength = 0   //How many bytes did we send out which almost always equals the length we received. We remove the BOM
-        var isFirstChunk = true    //In case of the first chunk we try to remove the BOM
+        var totalProcessedLength = 0 //How many bytes did we send out which almost always equals the length we received. We remove the BOM
+        var isFirstChunk = true //In case of the first chunk we try to remove the BOM
 
         val node = ArrayBuffer[String]()
-        val completedInstructions = ArrayBuffer[XMLInstruction]()   //Gather the already parsed (e.g. extracted) stuff here
+        val completedInstructions = ArrayBuffer[XMLInstruction]() //Gather the already parsed (e.g. extracted) stuff here
         val xmlElements = mutable.Set[XMLElement]()
-        val bufferedText = new StringBuilder   //Buffer for xml Text nodes
+        val bufferedText = new StringBuilder //Buffer for xml Text nodes
         val streamBuffer = ArrayBuffer[Byte]()
-        val incompleteBytes = ArrayBuffer[Byte]()   //xml tags or text are broken at package boudaries. We store the here to retry at the next iteration
+        val incompleteBytes = ArrayBuffer[Byte]() //xml tags or text are broken at package boudaries. We store the here to retry at the next iteration
         val elementBlock = new StringBuilder
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
-        val maxParsingSize = instructions.collect{case sp:XMLStopParsing => sp}.flatMap(a => a.maxParsingSize).headOption.getOrElse(Int.MaxValue) //if no maximum validation size was given we will parse the whole document
+        val maxParsingSize = instructions.collect { case sp: XMLStopParsing => sp }.flatMap(a => a.maxParsingSize).headOption.getOrElse(Int.MaxValue) //if no maximum validation size was given we will parse the whole document
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -111,7 +112,7 @@ object FastParsingStage {
         })
 
         def processOnPush(): Try[Unit] = {
-          var incomingData = grab(in)  //This is a var for a reason. We don't want to copy to another variable every time, when we only change it very few times
+          var incomingData = grab(in) //This is a var for a reason. We don't want to copy to another variable every time, when we only change it very few times
 
           if (isFirstChunk && incomingData.length > 0) { //Remove any Byte Order Mark from the file
             isFirstChunk = false
@@ -140,14 +141,14 @@ object FastParsingStage {
                 }
               }
 
-              if (totalProcessedLength == 0) {  //Handle empty payload
+              if (totalProcessedLength == 0) { //Handle empty payload
                 throw new EmptyStreamError()
               }
-              if (totalProcessedLength > maxPackageSize.getOrElse(Int.MaxValue)) {  //Don't let users/hackers overload the system
+              if (totalProcessedLength > maxPackageSize.getOrElse(Int.MaxValue)) { //Don't let users/hackers overload the system
                 throw new MaxSizeError()
               }
             } else { //We parsed the beginning of the xml already, so let's just push the rest of the data through
-              if (incompleteBytes.length > 0) {    //if we have incompleteBytes we must send them out too, which can happen just after parsing was finished
+              if (incompleteBytes.length > 0) { //if we have incompleteBytes we must send them out too, which can happen just after parsing was finished
                 incomingData = ByteString(incompleteBytes.toArray) ++ incomingData
                 incompleteBytes.clear()
               }
@@ -159,10 +160,10 @@ object FastParsingStage {
         def processOnUpstreamFinish(): Try[Unit] = {
           for {
             _ <- Try {
-              if (continueParsing)  //Only parse the remaining bytes if they are required
+              if (continueParsing) //Only parse the remaining bytes if they are required
                 advanceParser()
             }
-            _ <- if ((instructions.count(_.isInstanceOf[XMLValidate]) > 0) &&  //Did we complete all given validation istructions
+            _ <- if ((instructions.count(_.isInstanceOf[XMLValidate]) > 0) && //Did we complete all given validation istructions
               (completedInstructions.count(_.isInstanceOf[XMLValidate]) != instructions.count(_.isInstanceOf[XMLValidate]))) {
               Failure(new IncompleteXMLValidationException)
             }
@@ -173,7 +174,7 @@ object FastParsingStage {
         }
 
         def processStage(f: () => Try[Unit]) = {
-          f().recover {  //Execute the parsing function, then handle the possible errors
+          f().recover { //Execute the parsing function, then handle the possible errors
             case e: WFCException =>
               incompleteBytes.prependAll(parsingData.toArray)
               emitStage(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
