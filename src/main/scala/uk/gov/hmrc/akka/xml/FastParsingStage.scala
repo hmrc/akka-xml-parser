@@ -132,8 +132,8 @@ object FastParsingStage {
               push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               streamBuffer.clear()
 
-              val isValidationLimitReached = totalProcessedLength > maxParsingSize
-              if (isValidationLimitReached) { //Stop parsing when the max parsing size was reached
+              val isMaxPasingSizeReached = totalProcessedLength > maxParsingSize
+              if (isMaxPasingSizeReached) { //Stop parsing when the max parsing size was reached
                 continueParsing = false
                 parser.getInputFeeder.endOfInput()
                 if (instructions.collect { case v: XMLValidate => v }.exists(!completedInstructions.contains(_))) {
