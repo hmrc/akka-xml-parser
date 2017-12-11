@@ -33,10 +33,10 @@ import scala.util.{Failure, Success, Try}
 /**
   * Parse an xml document as it is flowing through the system. By parsing we mean extracting/updating/deleting/validating certain elements
   * Parsing a big document is very resource intensive, so we provide the option to only parse the beginning part, and then
-  * leave the rest of the document unparsed
+  * leave the rest of the document unparsed, use XMLStopParsing for this purpose
   * Created by Gabor Dorcsinecz on 29/11/17.
   */
-object BarsingStage {
+object FastParsingStage {
   val MALFORMED_STATUS = "Malformed"
   val STREAM_MAX_SIZE = "Stream max size"
   val STREAM_IS_EMPTY = "Stream is empty"
@@ -46,21 +46,19 @@ object BarsingStage {
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
-  val MAX_PARSE_LENGTH = Int.MaxValue //if no maximum validation size was given we will parse the whole document
-  val OPENING_CHEVRON = 60.toByte  //Decimal 60 is < in all encodings
+  val OPENING_CHEVRON = '<'.toByte
   /**
     *
     * @param instructions
-    * @param maxParsingSize
-    * @param packageMaxSize
+    * @param maxPackageSize
     * @return
     */
-  def parser(instructions: Seq[XMLInstruction], maxParsingSize: Option[Int] = None, packageMaxSize: Option[Int] = None)
+  def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
   : Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, maxParsingSize))
+    Flow.fromGraph(new StreamingXmlParser(instructions,maxPackageSize))
   }
 
-  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxParsingSize: Option[Int] = None)
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction],maxPackageSize: Option[Int] = None)
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -92,6 +90,7 @@ object BarsingStage {
         val incompleteBytes = ArrayBuffer[Byte]()   //xml tags or text are broken at package boudaries. We store the here to retry at the next iteration
         val elementBlock = new StringBuilder
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
+        val maxParsingSize = instructions.collect{case sp:XMLStopParsing => sp}.flatMap(a => a.maxParsingSize).headOption.getOrElse(Int.MaxValue) //if no maximum validation size was given we will parse the whole document
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -132,17 +131,20 @@ object BarsingStage {
               push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               streamBuffer.clear()
 
-              val isValidationLimitReached = totalProcessedLength > maxParsingSize.getOrElse(MAX_PARSE_LENGTH)
-              if (isValidationLimitReached) { //Stop parsing when the max length was reached
+              val isValidationLimitReached = totalProcessedLength > maxParsingSize
+              if (isValidationLimitReached) { //Stop parsing when the max parsing size was reached
                 continueParsing = false
                 parser.getInputFeeder.endOfInput()
+                if (instructions.collect { case v: XMLValidate => v }.exists(!completedInstructions.contains(_))) {
+                  throw new NoValidationTagsFoundWithinFirstNBytesException
+                }
               }
 
-              if (totalProcessedLength == 0) {
+              if (totalProcessedLength == 0) {  //Handle empty payload
                 throw new EmptyStreamError()
               }
-              if (isValidationLimitReached && instructions.collect { case v: XMLValidate => v }.exists(!completedInstructions.contains(_))) {
-                throw new NoValidationTagsFoundWithinFirstNBytesException
+              if (totalProcessedLength > maxPackageSize.getOrElse(Int.MaxValue)) {  //Don't let users/hackers overload the system
+                throw new MaxSizeError()
               }
             } else { //We parsed the beginning of the xml already, so let's just push the rest of the data through
               if (incompleteBytes.length > 0) {    //if we have incompleteBytes we must send them out too, which can happen just after parsing was finished
@@ -260,6 +262,10 @@ object BarsingStage {
                   case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
                     streamBuffer ++= extractBytes(parsingData, chunkOffset, start)
                     chunkOffset = end
+
+                  case instruction@XMLStopParsing(xpath, _) if node.toList == instruction.xPath =>
+                    continueParsing = false
+
                   case _ =>
                 })
                 advanceParser()
