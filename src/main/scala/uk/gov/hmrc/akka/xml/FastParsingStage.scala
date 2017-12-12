@@ -45,7 +45,6 @@ object FastParsingStage {
   val NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE = "No validation tags were found in first n bytes failure"
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
-  val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = '<'.toByte
 
   /**
@@ -85,7 +84,7 @@ object FastParsingStage {
 
         val node = ArrayBuffer[String]()
         val completedInstructions = ArrayBuffer[XMLInstruction]() //Gather the already parsed (e.g. extracted) stuff here
-        val xmlElements = mutable.Set[XMLElement]()
+        val xmlElements = mutable.Set[XMLElement]() //Temporary storage of half parsed elements, when they are fully parsed will be moved to completedInstructions
         val bufferedText = new StringBuilder //Buffer for xml Text nodes
         val streamBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]() //xml tags or text are broken at package boudaries. We store the here to retry at the next iteration
@@ -95,12 +94,12 @@ object FastParsingStage {
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
-            processStage(processOnPush)
+            processPush()
           }
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
-            processStage(processOnUpstreamFinish)
+            processUpstreamFinish()
             completeStage()
           }
         })
@@ -111,7 +110,7 @@ object FastParsingStage {
           }
         })
 
-        def processOnPush(): Try[Unit] = {
+        def processPush(): Unit = {
           var incomingData = grab(in) //This is a var for a reason. We don't want to copy to another variable every time, when we only change it very few times
 
           if (isFirstChunk && incomingData.length > 0) { //Remove any Byte Order Mark from the file
@@ -154,222 +153,85 @@ object FastParsingStage {
               }
               push(out, (incomingData, Set.empty[XMLElement]))
             }
-          }
+          }.recover(recoverFromErrors)
         }
 
-        def processOnUpstreamFinish(): Try[Unit] = {
-          for {
-            _ <- Try {
-              if (continueParsing) //Only parse the remaining bytes if they are required
-                advanceParser()
+        def processUpstreamFinish(): Unit = {
+          Try {
+            if (continueParsing) { //Only parse the remaining bytes if they are required
+              advanceParser()
             }
-            _ <- if ((instructions.count(_.isInstanceOf[XMLValidate]) > 0) && //Did we complete all given validation istructions
-              (completedInstructions.count(_.isInstanceOf[XMLValidate]) != instructions.count(_.isInstanceOf[XMLValidate]))) {
-              Failure(new IncompleteXMLValidationException)
+            val requestedValidations= instructions.count(_.isInstanceOf[XMLValidate])
+            val completedValidations= completedInstructions.count(_.isInstanceOf[XMLValidate])
+            if (requestedValidations > 0 && completedValidations != requestedValidations) {  //Did we complete all given validation istructions
+              throw new IncompleteXMLValidationException()
             }
-            else Success(Unit)
-          } yield {
-            emitStage()
-          }
+          }.recover(recoverFromErrors)
+          emitStage()
         }
 
-        def processStage(f: () => Try[Unit]) = {
-          f().recover { //Execute the parsing function, then handle the possible errors
-            case e: WFCException =>
-              incompleteBytes.prependAll(parsingData.toArray)
-              emitStage(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-              completeStage()
-            case e: EmptyStreamError =>
-              emitStage(
-                XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)),
-                XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
-              )
-              completeStage()
-            case e: NoValidationTagsFoundWithinFirstNBytesException =>
-              emitStage(
-                XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
-                XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE)))
-              completeStage()
-            case e: IncompleteXMLValidationException =>
-              emitStage(
-                XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
-                  Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
-              completeStage()
-            case e: ParserValidationError =>
-              emitStage(
-                XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE)))
-              completeStage()
-            case e: Throwable =>
-              throw e
-          }
+        private def recoverFromErrors(): PartialFunction[Throwable, Unit] = {
+          case e: WFCException =>
+            incompleteBytes.prependAll(parsingData.toArray)
+            emitStage(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
+            completeStage()
+          case e: EmptyStreamError =>
+            emitStage(
+              XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)),
+              XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
+            )
+            completeStage()
+          case e: NoValidationTagsFoundWithinFirstNBytesException =>
+            emitStage(
+              XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
+              XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE)))
+            completeStage()
+          case e: IncompleteXMLValidationException =>
+            emitStage(
+              XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
+                Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
+            completeStage()
+          case e: ParserValidationError =>
+            emitStage(
+              XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE)))
+            completeStage()
+          case e: Throwable =>
+            throw e
         }
+
 
         private def emitStage(elementsToAdd: XMLElement*) = {
           val streamSize = XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
           emit(out, (ByteString(incompleteBytes.toArray), getCompletedXMLElements(xmlElements).toSet ++ elementsToAdd + streamSize))
         }
 
+        /**
+          * Move the altoo parser forward and process (Extract/Update/Delete/Insert/etc) the xml elements
+          */
         @tailrec
         private def advanceParser(): Unit = {
           if (parser.hasNext) {
             val event = parser.next()
-            val (start, end) = getBounds(parser)
+            val offset = totalProcessedLength - parsingData.length
+            val (start, end) = getBounds(parser, offset)
             event match {
-
-              case AsyncXMLStreamReader.EVENT_INCOMPLETE => //This can only happen at the end of the xml part
-                val chunk = parsingData.slice(chunkOffset, parsingData.length)
-                incompleteBytes ++= chunk
+              case AsyncXMLStreamReader.EVENT_INCOMPLETE => //This will only happen at the end of the xml chunk
+                incompleteBytes ++= parsingData.slice(chunkOffset, parsingData.length)
 
               case XMLStreamConstants.START_ELEMENT =>
-                node += parser.getLocalName
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
-                  case instruction@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, instruction.attributes).nonEmpty || instruction.attributes.isEmpty =>
-                    val keys = ExtractNameSpace(parser, instruction.attributes)
-                    val ele = XMLElement(instruction.xPath, keys, None)
-                    xmlElements.add(ele)
-
-                  case instruction@XMLExtract(_, _, true) if node.toList == instruction.xPath | elementBlockExtracting =>
-                    elementBlockExtracting = true
-                    elementBlock.append(extractBytes(parsingData, start, end).utf8String)
-
-                  case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                    instruction.xPath match {
-                      case path if path == node.toList =>
-                        val input = getUpdatedElement(instruction.xPath, instruction.attributes, instruction.upsertBlock(parser.getPrefix))(parser).getBytes
-                        streamBuffer ++= insertBytes(parsingData, chunkOffset, start, input)
-                        chunkOffset = end
-                      case _ =>
-                        chunkOffset = end
-                    }
-
-                  case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
-                    val newBytes = if (node == instruction.end) ArrayBuffer.empty else parsingData.slice(start, end)
-                    if (!parser.isEmptyElement) {
-                      val ele = validators.get(instruction) match {
-                        case Some(x) => (instruction, x ++ newBytes)
-                        case None => (instruction, ArrayBuffer.empty ++= newBytes)
-                      }
-                      validators += ele
-                      validators.foreach {
-                        case (s@XMLValidate(_, `node`, f), testData) =>
-                          f(new String(testData.toArray)).map(throw _)
-                          continueParsing = false
-                          completedInstructions += instruction
-
-                        case _ =>
-                      }
-                    }
-
-                  case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                    streamBuffer ++= extractBytes(parsingData, chunkOffset, start)
-                    chunkOffset = end
-
-                  case instruction@XMLStopParsing(xpath, _) if node.toList == instruction.xPath =>
-                    continueParsing = false
-
-                  case _ =>
-                })
+                processXMLStartElement(start, end)
                 advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
-                isCharacterBuffering = false
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
-                  e match {
-                    case XMLExtract(`node`, _, false) =>
-                      update(xmlElements, node, Some(bufferedText.toString()))
-
-                    case instruction@XMLExtract(_, _, true) if elementBlockExtracting =>
-                      elementBlock.append(extractBytes(parsingData, start, end).utf8String)
-                      if (instruction.xPath == node.toList) {
-                        val ele = XMLElement(instruction.xPath, Map.empty[String, String], Some(elementBlock.toString()))
-                        xmlElements.add(ele)
-                        elementBlockExtracting = false
-                        elementBlock.clear()
-                      }
-                    case instruction@XMLInsertAfter(`node`, elementToInsert) =>
-                      streamBuffer ++= insertBytes(parsingData, chunkOffset, end, elementToInsert.getBytes)
-                      completedInstructions += instruction
-                      chunkOffset = end
-
-                    case instruction: XMLUpdate if instruction.xPath.dropRight(1) == node && instruction.isUpsert =>
-                      val input = getUpdatedElement(instruction.xPath, instruction.attributes, instruction.upsertBlock(parser.getPrefix))(parser).getBytes
-                      streamBuffer ++= insertBytes(parsingData, chunkOffset, start, input)
-                      completedInstructions += instruction
-                      chunkOffset = start
-
-                    case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                      instruction.xPath match {
-                        case path if path == node.toList =>
-                          completedInstructions += instruction
-                        case _ =>
-                      }
-                      chunkOffset = end
-
-                    case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
-                      val newBytes = parsingData.slice(start, end)
-                      val ele = validators.get(instruction) match {
-                        case Some(x) => (instruction, x ++= newBytes)
-                        case None => throw new IncompleteXMLValidationException
-                      }
-                      validators += ele
-
-                    case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                      chunkOffset = end
-
-                    case _ =>
-                  }
-                })
-                bufferedText.clear()
-                node -= parser.getLocalName
+                processXMLEndElement(start, end)
                 advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
-                instructions.foreach(f = (e: XMLInstruction) => {
-                  e match {
-                    case XMLExtract(`node`, _, false) =>
-                      val t = parser.getText()
-                      if (t.trim.length > 0) {
-                        isCharacterBuffering = true
-                        bufferedText.append(t)
-                      }
-
-                    case XMLExtract(_, _, true) if elementBlockExtracting =>
-                      val t = parser.getText()
-                      if (t.trim.length > 0) {
-                        isCharacterBuffering = true
-                        elementBlock.append(t)
-                      }
-
-                    case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                      chunkOffset = end
-
-                    case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
-                      val newBytes = parsingData.slice(start, end)
-                      val ele = validators.get(instruction) match {
-                        case Some(x) => (instruction, x ++ newBytes)
-                        case None => (instruction, ArrayBuffer.empty ++= newBytes)
-                      }
-                      validators += ele
-
-                    case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
-                      chunkOffset += (end - start)
-
-                    case _ =>
-                  }
-                })
+                processXMLCharacters(start, end)
                 advanceParser()
 
               case XMLStreamConstants.END_DOCUMENT =>
-                for {
-                  i <- instructions.diff(completedInstructions).collect { case v: XMLValidate => v }
-                } yield {
-                  validators.foreach {
-                    case (s@XMLValidate(_, _, f), testData) =>
-                      f(new String(testData.toArray)).map(throw _)
-                      completedInstructions += i
-                    case _ =>
-                  }
-                }
+                processXMLEndOfDocument()
                 advanceParser()
 
               case _ =>
@@ -378,10 +240,184 @@ object FastParsingStage {
           }
         }
 
-        private def getBounds(implicit reader: AsyncXMLStreamReader[AsyncByteArrayFeeder]): (Int, Int) = {
+        /**
+          * Handle xml starting tags
+          */
+        private def processXMLStartElement(start: Int, end: Int): Unit = {
+          node += parser.getLocalName
+          instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
+            case instruction@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, instruction.attributes).nonEmpty || instruction.attributes.isEmpty =>
+              val keys = ExtractNameSpace(parser, instruction.attributes)
+              val ele = XMLElement(instruction.xPath, keys, None)
+              xmlElements.add(ele)
+
+            case instruction@XMLExtract(_, _, true) if node.toList == instruction.xPath | elementBlockExtracting =>
+              elementBlockExtracting = true
+              elementBlock.append(extractBytes(parsingData, start, end).utf8String)
+
+            case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+              instruction.xPath match {
+                case path if path == node.toList =>
+                  val input = getUpdatedElement(instruction.xPath, instruction.attributes, instruction.upsertBlock(parser.getPrefix))(parser).getBytes
+                  streamBuffer ++= insertBytes(parsingData, chunkOffset, start, input)
+                  chunkOffset = end
+                case _ =>
+                  chunkOffset = end
+              }
+
+            case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
+              val newBytes = if (node == instruction.end) ArrayBuffer.empty else parsingData.slice(start, end)
+              if (!parser.isEmptyElement) {
+                val ele = validators.get(instruction) match {
+                  case Some(x) => (instruction, x ++ newBytes)
+                  case None => (instruction, ArrayBuffer.empty ++= newBytes)
+                }
+                validators += ele
+                validators.foreach {
+                  case (s@XMLValidate(_, `node`, f), testData) =>
+                    f(new String(testData.toArray)).map(throw _)
+                    continueParsing = false
+                    completedInstructions += instruction
+
+                  case _ =>
+                }
+              }
+
+            case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+              streamBuffer ++= extractBytes(parsingData, chunkOffset, start)
+              chunkOffset = end
+
+            case instruction@XMLStopParsing(xpath, _) if node.toList == instruction.xPath =>
+              continueParsing = false
+
+            case _ =>
+          })
+
+        }
+
+        /**
+          * Handle xml starting tags
+          */
+        private def processXMLEndElement(start: Int, end: Int): Unit = {
+          isCharacterBuffering = false
+          instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+            e match {
+              case XMLExtract(`node`, _, false) =>
+                update(xmlElements, node, Some(bufferedText.toString()))
+
+              case instruction@XMLExtract(_, _, true) if elementBlockExtracting =>
+                elementBlock.append(extractBytes(parsingData, start, end).utf8String)
+                if (instruction.xPath == node.toList) {
+                  val ele = XMLElement(instruction.xPath, Map.empty[String, String], Some(elementBlock.toString()))
+                  xmlElements.add(ele)
+                  elementBlockExtracting = false
+                  elementBlock.clear()
+                }
+              case instruction@XMLInsertAfter(`node`, elementToInsert) =>
+                streamBuffer ++= insertBytes(parsingData, chunkOffset, end, elementToInsert.getBytes)
+                completedInstructions += instruction
+                chunkOffset = end
+
+              case instruction: XMLUpdate if instruction.xPath.dropRight(1) == node && instruction.isUpsert =>
+                val input = getUpdatedElement(instruction.xPath, instruction.attributes, instruction.upsertBlock(parser.getPrefix))(parser).getBytes
+                streamBuffer ++= insertBytes(parsingData, chunkOffset, start, input)
+                completedInstructions += instruction
+                chunkOffset = start
+
+              case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+                instruction.xPath match {
+                  case path if path == node.toList =>
+                    completedInstructions += instruction
+                  case _ =>
+                }
+                chunkOffset = end
+
+              case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
+                val newBytes = parsingData.slice(start, end)
+                val ele = validators.get(instruction) match {
+                  case Some(x) => (instruction, x ++= newBytes)
+                  case None => throw new IncompleteXMLValidationException
+                }
+                validators += ele
+
+              case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+                chunkOffset = end
+
+              case _ =>
+            }
+          })
+          bufferedText.clear()
+          node -= parser.getLocalName
+        }
+
+        /**
+          * Handle text nodes inside xml chunks
+          */
+        private def processXMLCharacters(start: Int, end: Int): Unit = {
+          instructions.foreach(f = (e: XMLInstruction) => {
+            e match {
+              case XMLExtract(`node`, _, false) =>
+                val t = parser.getText()
+                if (t.trim.length > 0) {
+                  isCharacterBuffering = true
+                  bufferedText.append(t)
+                }
+
+              case XMLExtract(_, _, true) if elementBlockExtracting =>
+                val t = parser.getText()
+                if (t.trim.length > 0) {
+                  isCharacterBuffering = true
+                  elementBlock.append(t)
+                }
+
+              case instruction: XMLUpdate if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+                chunkOffset = end
+
+              case instruction: XMLValidate if instruction.start == node.slice(0, instruction.start.length) =>
+                val newBytes = parsingData.slice(start, end)
+                val ele = validators.get(instruction) match {
+                  case Some(x) => (instruction, x ++ newBytes)
+                  case None => (instruction, ArrayBuffer.empty ++= newBytes)
+                }
+                validators += ele
+
+              case instruction: XMLDelete if instruction.xPath == node.slice(0, instruction.xPath.length) =>
+                chunkOffset += (end - start)
+
+              case _ =>
+            }
+          })
+        }
+
+        /**
+          * Handle xml end of document
+          */
+        private def processXMLEndOfDocument(): Unit = {
+          for {
+            i <- instructions.diff(completedInstructions).collect { case v: XMLValidate => v }
+          } yield {
+            validators.foreach {
+              case (s@XMLValidate(_, _, f), testData) =>
+                f(new String(testData.toArray)).map(throw _)
+                completedInstructions += i
+              case _ =>
+            }
+          }
+        }
+
+        /**
+          * Calculate relative reader positions from the absolute positions
+          * We receive xml files in chunks, as they arrive on the network adapter. We feed the altoo xml parser
+          * with these chunks. So the position of parsed elements returned by the altoo parser will represent
+          * absolute positions from the beginning of the file (the first chunk). We have to convert these positions
+          * so that we can find our location inside the currently processed chunk.
+          *
+          * @param reader
+          * @return
+          */
+        private def getBounds(reader: AsyncXMLStreamReader[AsyncByteArrayFeeder], offset: Int): (Int, Int) = {
           val start = reader.getLocationInfo.getStartingByteOffset.toInt
           val end = reader.getLocationInfo.getEndingByteOffset.toInt
-          val offset = totalProcessedLength - parsingData.length
           val boundStart = if (start == 1) 0 else start - offset
           val boundEnd = end - offset
           (boundStart, boundEnd)
