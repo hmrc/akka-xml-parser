@@ -188,7 +188,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
       def seq2s(in: XMLElement): String = in.xPath.toString
 
       val orderedList = r.toList.sortWith((a, b) => seq2s(a) > seq2s(b))
-      orderedList(0).value.get should startWith(BarsingStage.MALFORMED_STATUS)
+      orderedList(0).value.get should startWith(FastParsingStage.MALFORMED_STATUS)
     }
   }
 
