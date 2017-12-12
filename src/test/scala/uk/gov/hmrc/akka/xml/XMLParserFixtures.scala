@@ -33,8 +33,8 @@ trait XMLParserFixtures {
     implicit val system = ActorSystem("XMLParser")
     implicit val mat = ActorMaterializer()
 
-    def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None,validationMaxSize: Option[Int] = None) = Flow[ByteString]
-      .via(BarsingStage.parser(instructions,validationMaxSize,maxSize))
+    def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None) = Flow[ByteString]
+      .via(FastParsingStage.parser(instructions,maxSize))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
@@ -54,7 +54,7 @@ trait XMLParserFixtures {
 
     def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false, validationMaxSize: Option[Int] = None)
     = Flow[ByteString]
-      .via(BarsingStage.parser(instructions, validationMaxSize))
+      .via(FastParsingStage.parser(instructions, validationMaxSize))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
@@ -96,4 +96,112 @@ trait XMLParserFixtures {
       })
 
   }
+}
+
+
+object ParserTestHelpers {
+  /**
+    * Break up the xml to random peaces, so we could simulate a streaming data
+    *
+    * @return
+    */
+  def getBrokenMessage(message2Break: String, maxChunkSize: Int): List[ByteString] = {
+    val rnd = scala.util.Random
+    var sum = 0
+    val lengths = new scala.collection.mutable.ArrayBuffer[Int]()
+    while (sum < message2Break.length) { //Create a list of lengts we are gonna cut our string at
+      val next = rnd.nextInt(maxChunkSize) + 1
+      sum += next
+      lengths += sum
+    }
+    lengths(lengths.length - 1) = message2Break.size
+    var startAt = 0
+    lengths.map { endAt =>
+      val part = message2Break.substring(startAt, endAt)
+      startAt = endAt
+      ByteString(part.getBytes())
+    }.toList
+  }
+
+  val sa100 =
+    <GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope">
+      <EnvelopeVersion>2.0</EnvelopeVersion>
+      <Header>
+        <MessageDetails>
+          <Class>HMRC-SA-SA100</Class> <Qualifier>request</Qualifier> <Function>submit</Function> <CorrelationID/> <Transformation>XML</Transformation> <GatewayTimestamp/>
+        </MessageDetails> <SenderDetails>
+        <IDAuthentication>
+          <SenderID>agent1</SenderID> <Authentication>
+          <Method>clear</Method> <Role>principal</Role> <Value>pass</Value>
+        </Authentication>
+        </IDAuthentication> <EmailAddress>aaa@bbb.co.uk</EmailAddress>
+      </SenderDetails>
+      </Header>
+      <GovTalkDetails>
+        <Keys>
+          <Key Type="UTR">123123123</Key>
+        </Keys> <TargetDetails>
+        <Organisation>HMRC</Organisation>
+      </TargetDetails> <ChannelRouting>
+        <Channel>
+          <URI>0016</URI> <Product>CCH Personal Tax</Product> <Version>2017.300.1710.12402</Version>
+        </Channel>
+      </ChannelRouting>
+      </GovTalkDetails>
+      <Body>
+        <IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/SA/SA100/16-17/2">
+          <IRheader>
+            <Keys>
+              <Key Type="UTR">123123123</Key>
+            </Keys> <PeriodEnd>2017-04-05</PeriodEnd> <DefaultCurrency>GBP</DefaultCurrency> <Manifest>
+            <Contains>
+              <Reference>
+                <Namespace>http://www.govtalk.gov.uk/taxation/SA/SA100/16-17/2</Namespace> <SchemaVersion>2017-v2.0</SchemaVersion> <TopElementName>MTR</TopElementName>
+              </Reference>
+            </Contains>
+          </Manifest> <IRmark Type="generic">zdWbRl7tYkSiz3T07/+rQTlVJ+8=</IRmark> <Sender>Agent</Sender>
+          </IRheader> <MTR>
+          <SA100>
+            <YourPersonalDetails>
+              <DateOfBirth>1999-12-12</DateOfBirth> <NationalInsuranceNumber>999999999</NationalInsuranceNumber> <TaxpayerStatus>U</TaxpayerStatus>
+            </YourPersonalDetails>
+            <Income>
+              <UKInterestAndDividends>
+                <UntaxedUKinterestEtc>3242.00</UntaxedUKinterestEtc>
+              </UKInterestAndDividends> <StateBenefits>
+              <AnnualStatePension>8633.00</AnnualStatePension> <OtherPensionsAndRetirementAnnuities>20713.00</OtherPensionsAndRetirementAnnuities> <TaxTakenOffPensionsAndRetirementAnnuities>3667.00</TaxTakenOffPensionsAndRetirementAnnuities>
+            </StateBenefits>
+            </Income>
+            <TaxReliefs>
+              <CharitableGiving>
+                <GiftAidPaymentsMadeInYear>266.00</GiftAidPaymentsMadeInYear>
+              </CharitableGiving>
+            </TaxReliefs> <FinishingYourTaxReturn>
+            <NotPaidEnough>
+              <NonPAYEIncomeNotToBeCodedOut>yes</NonPAYEIncomeNotToBeCodedOut>
+            </NotPaidEnough>
+            <TaxAdviser>
+              <TaxAdviser>AAAA</TaxAdviser> <TaxAdviserPhoneNumber>eeee</TaxAdviserPhoneNumber> <TaxAdviserAddress>
+              <Line>ccccc</Line> <Line>sssss</Line> <Line>eeeee</Line> <PostCode>bbbb</PostCode>
+            </TaxAdviserAddress>
+            </TaxAdviser>
+            <SigningYourForm>
+              <OtherInformationSpace>asasdasd</OtherInformationSpace>
+            </SigningYourForm>
+          </FinishingYourTaxReturn>
+          </SA100>
+          <SA110>
+            <SelfAssessment>
+              <TotalTaxEtcDue>450.60</TotalTaxEtcDue>
+            </SelfAssessment> <UnderpaidTax/>
+          </SA110>
+          <TaxpayerName>Mr AAA BBB</TaxpayerName> <Declaration>
+            <AgentDeclaration>yes</AgentDeclaration>
+          </Declaration>
+        </MTR>
+        </IRenvelope>
+      </Body>
+    </GovTalkMessage>
+
+
 }

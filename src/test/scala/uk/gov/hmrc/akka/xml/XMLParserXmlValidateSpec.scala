@@ -66,9 +66,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string ==
       "<body><foo>test</foo><bar>test</bar></body>") None
     else Some(error)
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r,ParsingStage.VALIDATION_INSTRUCTION_FAILURE).attributes(ParsingStage.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
     }
   }
@@ -76,9 +79,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
   it should "validate over multiple chunks" in {
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>test</fo"), ByteString("o><bar>test</bar></body><test>foo</test></xml>")))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<body><foo>test</foo><bar>test</bar></body>") None else Some(new ParserValidationError {})
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "70"), Some(CompleteChunkStage.STREAM_SIZE))
       )
@@ -93,9 +99,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
       ByteString("o>test</fo123o><bar>test</bar></bo"), ByteString("dy></xml>")))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) =>
       if (string == "<body><fo123o>test</fo123o><bar>test</bar></body></xml>") None else Some(new ParserValidationError {})
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r,ParsingStage.VALIDATION_INSTRUCTION_FAILURE).attributes(ParsingStage.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
 
     }
@@ -110,9 +119,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
       ByteString("o><bar>test</bar></body><tes"), ByteString("t>test</test></xml>")))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) =>
       if (string == "<body><fo123o>test</fo123o><bar>test</bar></body>") None else Some(new ParserValidationError {})
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body"), Seq("xml", "test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
       )
@@ -138,9 +150,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val source = Source(List(ByteString("<xml><bo"), ByteString("dy><foo>"), ByteString("foo</foo><bar>test</bar></body></xml>")))
     val error = new ParserValidationError {}
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<body><foo>test</foo></body>") None else Some(error)
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "bar"), Seq("xml", "bar"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "bar"), Seq("xml", "bar"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(5))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(5)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r,ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE) shouldBe XMLElement(List(), Map(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE))
       findAttribute(r,CompleteChunkStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "8"), Some(CompleteChunkStage.STREAM_SIZE))
     }
@@ -149,9 +164,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
   it should "validate with self closing tags" in {
     val source = Source.single(ByteString("<xml><foo/><bar>bar</bar><test/></xml>"))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<xml><foo/><bar>bar</bar>") None else Some(new ParserValidationError {})
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml"), Seq("test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml"), Seq("test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r,ParsingStage.VALIDATION_INSTRUCTION_FAILURE).attributes(ParsingStage.VALIDATION_INSTRUCTION_FAILURE) contains ("uk.gov.hmrc.akka.xml.XMLParserXmlValidateSpec")
     }
   }
@@ -159,9 +177,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
   it should "fail validation if the start tag is not found" in {
     val source = Source.single(ByteString("<xml><body><bar>bar</bar><test/></body></xml>"))
     val validatingFunction = (string: String) => None
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body", "foo"), Seq("xml", "body", "test"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body", "foo"), Seq("xml", "body", "test"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r,ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE) shouldBe XMLElement(List(), Map(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE))
       findAttribute(r,CompleteChunkStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "45"), Some(CompleteChunkStage.STREAM_SIZE))
     }
@@ -170,9 +191,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
   it should "pass validation if the start tag is not found" in {
     val source = Source.single(ByteString("<xml><body><foo>foo</foo></body></xml>"))
     val validatingFunction = (string: String) => None
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body", "foo"), Seq("xml", "body", "bar"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body", "foo"), Seq("xml", "body", "bar"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "38"), Some(CompleteChunkStage.STREAM_SIZE))
       )
@@ -188,9 +212,12 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val validatingFunction: String => Option[ParserValidationError] = (string: String) => if (string == "<body><foo>test</foo>")
       None
     else Some(new ParserValidationError {})
-    val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "bar"), validatingFunction))
+    val paths = Seq[XMLInstruction](
+      XMLValidate(Seq("xml", "body"), Seq("xml", "body", "bar"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(50))
+    )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(50)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
       )
@@ -209,10 +236,11 @@ class XMLParserXmlValidateSpec extends FlatSpec
     val paths = Seq[XMLInstruction](
       XMLExtract(Seq("xml", "root", "foo")),
       XMLExtract(Seq("xml", "root", "taz")),
-      XMLValidate(Seq("xml", "root"), Seq("xml", "root", "body"), validatingFunction)
+      XMLValidate(Seq("xml", "root"), Seq("xml", "root", "body"), validatingFunction),
+      XMLStopParsing(Seq("aaa"),Some(100))
     )
 
-    whenReady(source.runWith(parseToXMLElements(paths, None, Some(100)))) { r =>
+    whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List("xml", "root", "foo"), Map(),Some("test")),
         XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))

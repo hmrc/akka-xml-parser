@@ -166,7 +166,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
   ignore should "perform through all stages with config settings from TE" in {
     val testFile = scala.io.Source.fromFile("submission24M.xml")
     val msg = try testFile.getLines().mkString("\n") finally testFile.close()
-    val messages = getBrokenMessage(msg, 500)
+    val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
 
     val as = ActorSystem("PerformanceTest")
     val am = ActorMaterializer()(as)
@@ -210,7 +210,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     }
     }).toMat(sink)(Keep.both).run()(am)
 
-    val messages = getBrokenMessage(msg, 500)
+    val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
     sub.request(messages.length)
     var totalLength = 0
     messages.foreach { a =>
@@ -242,7 +242,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
 
       val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
 
-      val messages = getBrokenMessage(msg, 500)
+      val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
       var totalLength = 0
       messages.foreach { a =>
         totalLength += a.length
@@ -276,11 +276,11 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
         return
       }
       val source = TestSource.probe[ByteString](as)
-      val chunk = BarsingStage.parser(submissionInstructions, Some(2000))
+      val chunk = FastParsingStage.parser(submissionInstructions, Some(2000))
 
       val (pub, sub) = source.via(chunk).toMat(Sink.fold(Set.empty[XMLElement])((sum, i) => sum ++ i._2))(Keep.both).run()(am)
 
-      val messages = getBrokenMessage(msg, 500)
+      val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
       var totalLength = 0
       messages.foreach { data =>
         totalLength += data.length
@@ -297,28 +297,6 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     }
   }
 
-  /**
-    * Break up the xml to random peaces, so we could simulate a streaming data
-    *
-    * @return
-    */
-  def getBrokenMessage(message2Break: String, maxChunkSize: Int): List[ByteString] = {
-    val rnd = scala.util.Random
-    var sum = 0
-    val lengths = new scala.collection.mutable.ArrayBuffer[Int]()
-    while (sum < message2Break.length) { //Create a list of lengts we are gonna cut our string at
-      val next = rnd.nextInt(maxChunkSize) + 1
-      sum += next
-      lengths += sum
-    }
-    lengths(lengths.length - 1) = message2Break.size
-    var startAt = 0
-    lengths.map { endAt =>
-      val part = message2Break.substring(startAt, endAt)
-      startAt = endAt
-      ByteString(part.getBytes())
-    }.toList
-  }
 
 
 }
