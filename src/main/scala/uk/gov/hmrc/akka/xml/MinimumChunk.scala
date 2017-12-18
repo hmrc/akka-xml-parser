@@ -25,7 +25,7 @@ import akka.util.ByteString
 /**
   * Created by abhishek on 01/03/17.
   */
-@deprecated
+@deprecated("Use FastParsingStage instead","akka-xml-parser 1.0.0")
 object MinimumChunk {
 
   def parser(minimumChunkSize: Int):

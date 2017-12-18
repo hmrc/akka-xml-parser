@@ -23,7 +23,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 import com.fasterxml.aalto.stax.InputFactoryImpl
-import uk.gov.hmrc.akka.xml.CompleteChunkStage.{OPENING_CHEVRON, STREAM_IS_EMPTY, STREAM_SIZE}
+import uk.gov.hmrc.akka.xml.CompleteChunkStage.{OPENING_CHEVRON, STREAM_IS_EMPTY, STREAM_MAX_SIZE, STREAM_SIZE}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -45,10 +45,11 @@ object FastParsingStage {
   val NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE = "No validation tags were found in first n bytes failure"
   val VALIDATION_INSTRUCTION_FAILURE = "Validation instruction failure"
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
+  val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = '<'.toByte
 
   /**
-    *
+    * Create a streaming parser that can extract/update/delete/insert xml elements into our xml data stream while flowing through the system
     * @param instructions
     * @param maxPackageSize
     * @return
@@ -81,6 +82,9 @@ object FastParsingStage {
         var elementBlockExtracting: Boolean = false
         var totalProcessedLength = 0 //How many bytes did we send out which almost always equals the length we received. We remove the BOM
         var isFirstChunk = true //In case of the first chunk we try to remove the BOM
+        var xmlRootStartTag: Option[String] = None  //root opening xml tag in the incoming document
+        var lastChunk = ByteString.empty   //We may or may not xml parse the last bytes of the document. But in the end we can check the wether the closing tag is the same as the opening
+        var xmlTagsCounter = 0  //For every xml tag opening we add, for every closing we deduct, until we reach
 
         val node = ArrayBuffer[String]()
         val completedInstructions = ArrayBuffer[XMLInstruction]() //Gather the already parsed (e.g. extracted) stuff here
@@ -90,7 +94,9 @@ object FastParsingStage {
         val incompleteBytes = ArrayBuffer[Byte]() //xml tags or text are broken at package boudaries. We store the here to retry at the next iteration
         val elementBlock = new StringBuilder
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
-        val maxParsingSize = instructions.collect { case sp: XMLStopParsing => sp }.flatMap(a => a.maxParsingSize).headOption.getOrElse(Int.MaxValue) //if no maximum validation size was given we will parse the whole document
+        val xmlStopParsing = instructions.collect { case sp: XMLStopParsing => sp }.headOption
+        val maxParsingSize = xmlStopParsing.flatMap(a => a.maxParsingSize) //if no maximum validation size was given we will parse the whole document
+        val lastChunkBufferSize = 32  //How much data should we store in the lastChunk buffer
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -112,7 +118,7 @@ object FastParsingStage {
 
         def processPush(): Unit = {
           var incomingData = grab(in) //This is a var for a reason. We don't want to copy to another variable every time, when we only change it very few times
-
+          updateLastChunk(incomingData)
           if (isFirstChunk && incomingData.length > 0) { //Remove any Byte Order Mark from the file
             isFirstChunk = false
             val openingChevronAt = incomingData.indexOf(OPENING_CHEVRON)
@@ -131,7 +137,7 @@ object FastParsingStage {
               push(out, (ByteString(streamBuffer.toArray), getCompletedXMLElements(xmlElements).toSet))
               streamBuffer.clear()
 
-              val isMaxPasingSizeReached = totalProcessedLength > maxParsingSize
+              val isMaxPasingSizeReached = totalProcessedLength > maxParsingSize.getOrElse(Int.MaxValue)
               if (isMaxPasingSizeReached) { //Stop parsing when the max parsing size was reached
                 continueParsing = false
                 parser.getInputFeeder.endOfInput()
@@ -161,10 +167,23 @@ object FastParsingStage {
             if (continueParsing) { //Only parse the remaining bytes if they are required
               advanceParser()
             }
-            val requestedValidations= instructions.count(_.isInstanceOf[XMLValidate])
-            val completedValidations= completedInstructions.count(_.isInstanceOf[XMLValidate])
-            if (requestedValidations > 0 && completedValidations != requestedValidations) {  //Did we complete all given validation istructions
+            val requestedValidations = instructions.count(_.isInstanceOf[XMLValidate])
+            val completedValidations = completedInstructions.count(_.isInstanceOf[XMLValidate])
+            if (requestedValidations > 0 && completedValidations != requestedValidations) { //Did we complete all given validation istructions
               throw new IncompleteXMLValidationException()
+            }
+            val tagCountMatch = xmlStopParsing match {
+              case Some(stopParsing) =>  //We interrupted parsing, which may mean that we parsed the whole document, or we only parsed up to a given xml tag
+                xmlTagsCounter == 0 || xmlTagsCounter == stopParsing.xPath.length
+              case None =>  //If we did not interrupt parsing, then opening and closing tags must be equal
+                xmlTagsCounter == 0
+            }
+            if (!tagCountMatch) {
+              throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
+            }
+            val xmlRootEndTag = Some(extractEndTag(lastChunk.utf8String))
+            if (xmlRootStartTag != xmlRootEndTag) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
+              throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
             }
           }.recover(recoverFromErrors)
           emitStage()
@@ -175,25 +194,20 @@ object FastParsingStage {
             incompleteBytes.prependAll(parsingData.toArray)
             emitStage(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
             completeStage()
-          case e: EmptyStreamError =>
-            emitStage(
-              XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)),
-              XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE))
-            )
-            completeStage()
           case e: NoValidationTagsFoundWithinFirstNBytesException =>
-            emitStage(
-              XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
-              XMLElement(Nil, Map(STREAM_SIZE -> totalProcessedLength.toString), Some(STREAM_SIZE)))
+            emitStage(XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)))
             completeStage()
           case e: IncompleteXMLValidationException =>
-            emitStage(
-              XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
-                Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
+            emitStage(XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
+            completeStage()
+          case e: MaxSizeError =>
+            emitStage(XMLElement(Nil, Map.empty, Some(STREAM_MAX_SIZE)))
+            completeStage()
+          case e: EmptyStreamError =>
+            emitStage(XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)))
             completeStage()
           case e: ParserValidationError =>
-            emitStage(
-              XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE)))
+            emitStage(XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE)))
             completeStage()
           case e: Throwable =>
             throw e
@@ -219,10 +233,12 @@ object FastParsingStage {
                 incompleteBytes ++= parsingData.slice(chunkOffset, parsingData.length)
 
               case XMLStreamConstants.START_ELEMENT =>
+                if (continueParsing) xmlTagsCounter += 1 //Count tags only as long as we are parsing
                 processXMLStartElement(start, end)
                 advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
+                if (continueParsing) xmlTagsCounter -= 1 //Count tags only as long as we are parsing
                 processXMLEndElement(start, end)
                 advanceParser()
 
@@ -245,6 +261,9 @@ object FastParsingStage {
           */
         private def processXMLStartElement(start: Int, end: Int): Unit = {
           node += parser.getLocalName
+          if (xmlRootStartTag.isEmpty) {
+            xmlRootStartTag = Some(parser.getLocalName)
+          }
           instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
             case instruction@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, instruction.attributes).nonEmpty || instruction.attributes.isEmpty =>
               val keys = ExtractNameSpace(parser, instruction.attributes)
@@ -276,7 +295,6 @@ object FastParsingStage {
                 validators.foreach {
                   case (s@XMLValidate(_, `node`, f), testData) =>
                     f(new String(testData.toArray)).map(throw _)
-                    continueParsing = false
                     completedInstructions += instruction
 
                   case _ =>
@@ -422,7 +440,40 @@ object FastParsingStage {
           val boundEnd = end - offset
           (boundStart, boundEnd)
         }
+
+        /**
+          * Extract the closing xml tag from a piece of string. Means turning:
+          * </theTag> into theTag  or </ns55:theTag> into theTag
+          * @param in
+          * @return
+          */
+        private def extractEndTag(in: String): String = {
+          val lastClosingChevron = in.lastIndexOf("""</""")
+          val lastNoNamespace = in.indexOf(':', lastClosingChevron)
+          val rootStartAt = if (lastNoNamespace >= 0) lastNoNamespace + 1 else lastClosingChevron + 2
+          val res = in.substring(rootStartAt, in.indexOf(">", rootStartAt))
+          res
+        }
+
+        /**
+          * Update our buffer storing the last bytes only
+          * @param in
+          */
+        private def updateLastChunk(in: ByteString) = {
+          if (in.size > lastChunkBufferSize) { //If we have enough data to fill the whole buffer from the incoming data
+            lastChunk = in.takeRight(lastChunkBufferSize)
+          } else {  //the incoming data is less than the buffer size, so we have to add it at the end of the existing content
+            val temp = lastChunk ++ in
+            if (temp.size > lastChunkBufferSize) {  //Add the incoming data chunk, and shorten it to be able to fit  into the buffer
+              lastChunk = temp.takeRight(lastChunkBufferSize)
+            } else {  //Add the whole incoming data chunk
+              lastChunk = temp
+            }
+          }
+        }
       }
+
+
   }
 
 }
