@@ -21,7 +21,6 @@ import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
-import uk.gov.hmrc.akka.xml.FastParsingStage
 
 class XMLParsingStopSpec extends FlatSpec
   with Matchers
@@ -71,7 +70,7 @@ class XMLParsingStopSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("GovTalkMessage", "Header", "MessageDetails", "Class")))
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-SA-SA100")),
-      XMLElement(List(), Map(FastParsingStage.VALIDATION_INSTRUCTION_FAILURE -> "uk.gov.hmrc.akka.xml.MaxSizeError"), Some(FastParsingStage.VALIDATION_INSTRUCTION_FAILURE))
+      XMLElement(List(), Map(), Some("Stream max size"))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths, Some(200)))) { r =>
@@ -84,7 +83,6 @@ class XMLParsingStopSpec extends FlatSpec
       }
     }
   }
-
 
 
 }
