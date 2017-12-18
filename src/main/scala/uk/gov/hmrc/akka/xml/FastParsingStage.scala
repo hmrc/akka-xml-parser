@@ -23,7 +23,6 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
 import com.fasterxml.aalto.stax.InputFactoryImpl
-import uk.gov.hmrc.akka.xml.CompleteChunkStage.{OPENING_CHEVRON, STREAM_IS_EMPTY, STREAM_MAX_SIZE, STREAM_SIZE}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -82,9 +81,9 @@ object FastParsingStage {
         var elementBlockExtracting: Boolean = false
         var totalProcessedLength = 0 //How many bytes did we send out which almost always equals the length we received. We remove the BOM
         var isFirstChunk = true //In case of the first chunk we try to remove the BOM
-        var xmlRootStartTag: Option[String] = None  //root opening xml tag in the incoming document
+        var xmlRootOpeningTag: Option[String] = None  //root opening xml tag in the incoming document
         var lastChunk = ByteString.empty   //We may or may not xml parse the last bytes of the document. But in the end we can check the wether the closing tag is the same as the opening
-        var xmlTagsCounter = 0  //For every xml tag opening we add, for every closing we deduct, until we reach
+        var numberOfUnclosedXMLTags = 0  //For every xml tag opening we add 1, for every closing we deduct 1, so in a valid document this should be 0
 
         val node = ArrayBuffer[String]()
         val completedInstructions = ArrayBuffer[XMLInstruction]() //Gather the already parsed (e.g. extracted) stuff here
@@ -172,17 +171,12 @@ object FastParsingStage {
             if (requestedValidations > 0 && completedValidations != requestedValidations) { //Did we complete all given validation istructions
               throw new IncompleteXMLValidationException()
             }
-            val tagCountMatch = xmlStopParsing match {
-              case Some(stopParsing) =>  //We interrupted parsing, which may mean that we parsed the whole document, or we only parsed up to a given xml tag
-                xmlTagsCounter == 0 || xmlTagsCounter == stopParsing.xPath.length
-              case None =>  //If we did not interrupt parsing, then opening and closing tags must be equal
-                xmlTagsCounter == 0
-            }
-            if (!tagCountMatch) {
+
+            if (endTagsMismatch)
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
-            }
+
             val xmlRootEndTag = Some(extractEndTag(lastChunk.utf8String))
-            if (xmlRootStartTag != xmlRootEndTag) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
+            if (xmlRootOpeningTag != xmlRootEndTag) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
             }
           }.recover(recoverFromErrors)
@@ -233,12 +227,12 @@ object FastParsingStage {
                 incompleteBytes ++= parsingData.slice(chunkOffset, parsingData.length)
 
               case XMLStreamConstants.START_ELEMENT =>
-                if (continueParsing) xmlTagsCounter += 1 //Count tags only as long as we are parsing
+                if (continueParsing) numberOfUnclosedXMLTags += 1 //Count tags only as long as we are parsing
                 processXMLStartElement(start, end)
                 advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
-                if (continueParsing) xmlTagsCounter -= 1 //Count tags only as long as we are parsing
+                if (continueParsing) numberOfUnclosedXMLTags -= 1 //Count tags only as long as we are parsing
                 processXMLEndElement(start, end)
                 advanceParser()
 
@@ -261,8 +255,8 @@ object FastParsingStage {
           */
         private def processXMLStartElement(start: Int, end: Int): Unit = {
           node += parser.getLocalName
-          if (xmlRootStartTag.isEmpty) {
-            xmlRootStartTag = Some(parser.getLocalName)
+          if (xmlRootOpeningTag.isEmpty) {
+            xmlRootOpeningTag = Some(parser.getLocalName)
           }
           instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => e match {
             case instruction@XMLExtract(`node`, _, false) if ExtractNameSpace(parser, instruction.attributes).nonEmpty || instruction.attributes.isEmpty =>
@@ -440,6 +434,15 @@ object FastParsingStage {
           val boundEnd = end - offset
           (boundStart, boundEnd)
         }
+
+
+        private def endTagsMismatch() =xmlStopParsing match {
+          case Some(stopParsing) if numberOfUnclosedXMLTags == 0 => false
+          case Some(stopParsing) if numberOfUnclosedXMLTags == stopParsing.xPath.length => false
+          case None if numberOfUnclosedXMLTags == 0 => false
+          case _ => true
+        }
+
 
         /**
           * Extract the closing xml tag from a piece of string. Means turning:
