@@ -176,7 +176,7 @@ object FastParsingStage {
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
 
             val xmlRootEndTag = Some(extractEndTag(lastChunk.utf8String))
-            if (xmlRootOpeningTag != xmlRootEndTag) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
+            if (xmlRootEndTag!= xmlRootOpeningTag ) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
             }
           }.recover(recoverFromErrors)
