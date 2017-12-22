@@ -46,6 +46,9 @@ object FastParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = '<'.toByte
+  val XMLPROLOGUE_START = "<?xml version"
+  val XMLPROLOGUE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+   
 
   /**
     * Create a streaming parser that can extract/update/delete/insert xml elements into our xml data stream while flowing through the system
@@ -53,12 +56,12 @@ object FastParsingStage {
     * @param maxPackageSize
     * @return
     */
-  def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
+  def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None, insertPrologueIfNotPresent:Boolean = false)
   : Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, maxPackageSize))
+    Flow.fromGraph(new StreamingXmlParser(instructions, maxPackageSize, insertPrologueIfNotPresent))
   }
 
-  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None, insertPrologueIfNotPresent:Boolean = false)
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -124,6 +127,10 @@ object FastParsingStage {
             if (openingChevronAt > 0) { //This file stream has a BOM (Byte Order Mark) at the beginning or it is not xml
               incomingData = incomingData.drop(openingChevronAt)
             }
+  	        if(insertPrologueIfNotPresent && !incomingData.utf8String.contains(XMLPROLOGUE_START)) {
+              incomingData = ByteString(XMLPROLOGUE) ++ incomingData
+            } 
+			
           }
           chunkOffset = 0
           Try {
@@ -166,7 +173,10 @@ object FastParsingStage {
             if (continueParsing) { //Only parse the remaining bytes if they are required
               advanceParser()
             }
-            val requestedValidations = instructions.count(_.isInstanceOf[XMLValidate])
+            if (totalProcessedLength == 0)    //Handle empty payload
+                throw new EmptyStreamError()
+
+			val requestedValidations = instructions.count(_.isInstanceOf[XMLValidate])
             val completedValidations = completedInstructions.count(_.isInstanceOf[XMLValidate])
             if (requestedValidations > 0 && completedValidations != requestedValidations) { //Did we complete all given validation istructions
               throw new IncompleteXMLValidationException()
