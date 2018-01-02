@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -179,9 +179,33 @@ class XMLParserXmlDeleteSpec extends FlatSpec
     }
   }
 
+  it should "insert a prolog in first chunk" in {
+    val source = Source(List(ByteString("<xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
+    val instructions = Seq[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
+
+  it should "insert a prolog in first chunk before comments" in {
+    val source = Source(List(ByteString("<!-- Comments --><xml><header></header><body><ti"), ByteString("tle>hello</title></body></xml>")))
+    val upsertBlock: String => String = (prefix: String) => "bar"
+    val instructions = Seq[XMLInstruction](
+      XMLUpdate(Seq("xml", "header", "foo"), upsertBlock, isUpsert = true),
+      XMLDelete(Seq("xml", "body", "title")))
+
+    whenReady(source.runWith(parseToByteString(instructions, true))) { r =>
+      r.utf8String shouldBe "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!-- Comments --><xml><header><foo>bar</foo></header><body></body></xml>"
+    }
+  }
+
   it should "be able to delete parts of a ByteString" in {
     val pdf = new ParsingDataFunctions {}
-    val remainingBytes = pdf.deleteBytes(ByteString.fromString("1234567890"),2,5,7)
+    val remainingBytes = pdf.deleteBytes(ByteString.fromString("1234567890"), 2, 5, 7)
     remainingBytes.utf8String shouldBe "345890"
   }
 
