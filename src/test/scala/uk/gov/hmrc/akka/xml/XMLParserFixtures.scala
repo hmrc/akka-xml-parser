@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ trait XMLParserFixtures {
 
     def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false, validationMaxSize: Option[Int] = None)
     = Flow[ByteString]
-      .via(FastParsingStage.parser(instructions, validationMaxSize))
+      .via(FastParsingStage.parser(instructions, validationMaxSize, insertPrologueIfNotPresent))
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 

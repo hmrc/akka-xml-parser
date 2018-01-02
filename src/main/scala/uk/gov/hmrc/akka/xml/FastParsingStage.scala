@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,19 +46,23 @@ object FastParsingStage {
   val PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE = "Not all of the xml validations / checks were done"
   val XML_START_END_TAGS_MISMATCH = "Start and End tags mismatch. Element(s) - "
   val OPENING_CHEVRON = '<'.toByte
+  val XMLPROLOGUE_START = "<?xml version"
+  val XMLPROLOGUE = ByteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+
 
   /**
     * Create a streaming parser that can extract/update/delete/insert xml elements into our xml data stream while flowing through the system
+    *
     * @param instructions
     * @param maxPackageSize
     * @return
     */
-  def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
+  def parser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false)
   : Flow[ByteString, (ByteString, Set[XMLElement]), NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(instructions, maxPackageSize))
+    Flow.fromGraph(new StreamingXmlParser(instructions, maxPackageSize, insertPrologueIfNotPresent))
   }
 
-  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None)
+  private class StreamingXmlParser(instructions: Seq[XMLInstruction], maxPackageSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false)
     extends GraphStage[FlowShape[ByteString, (ByteString, Set[XMLElement])]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -81,9 +85,9 @@ object FastParsingStage {
         var elementBlockExtracting: Boolean = false
         var totalProcessedLength = 0 //How many bytes did we send out which almost always equals the length we received. We remove the BOM
         var isFirstChunk = true //In case of the first chunk we try to remove the BOM
-        var xmlRootOpeningTag: Option[String] = None  //root opening xml tag in the incoming document
-        var lastChunk = ByteString.empty   //We may or may not xml parse the last bytes of the document. But in the end we can check the wether the closing tag is the same as the opening
-        var numberOfUnclosedXMLTags = 0  //For every xml tag opening we add 1, for every closing we deduct 1, so in a valid document this should be 0
+        var xmlRootOpeningTag: Option[String] = None //root opening xml tag in the incoming document
+        var lastChunk = ByteString.empty //We may or may not xml parse the last bytes of the document. But in the end we can check the wether the closing tag is the same as the opening
+        var numberOfUnclosedXMLTags = 0 //For every xml tag opening we add 1, for every closing we deduct 1, so in a valid document this should be 0
 
         val node = ArrayBuffer[String]()
         val completedInstructions = ArrayBuffer[XMLInstruction]() //Gather the already parsed (e.g. extracted) stuff here
@@ -95,7 +99,7 @@ object FastParsingStage {
         val validators = mutable.Map[XMLValidate, ArrayBuffer[Byte]]()
         val xmlStopParsing = instructions.collect { case sp: XMLStopParsing => sp }.headOption
         val maxParsingSize = xmlStopParsing.flatMap(a => a.maxParsingSize) //if no maximum validation size was given we will parse the whole document
-        val lastChunkBufferSize = 32  //How much data should we store in the lastChunk buffer
+        val lastChunkBufferSize = 32 //How much data should we store in the lastChunk buffer
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -124,6 +128,10 @@ object FastParsingStage {
             if (openingChevronAt > 0) { //This file stream has a BOM (Byte Order Mark) at the beginning or it is not xml
               incomingData = incomingData.drop(openingChevronAt)
             }
+            if (insertPrologueIfNotPresent && !incomingData.utf8String.contains(XMLPROLOGUE_START)) {
+              incomingData = XMLPROLOGUE ++ incomingData
+            }
+
           }
           chunkOffset = 0
           Try {
@@ -166,6 +174,9 @@ object FastParsingStage {
             if (continueParsing) { //Only parse the remaining bytes if they are required
               advanceParser()
             }
+            if (totalProcessedLength == 0) //Handle empty payload
+              throw new EmptyStreamError()
+
             val requestedValidations = instructions.count(_.isInstanceOf[XMLValidate])
             val completedValidations = completedInstructions.count(_.isInstanceOf[XMLValidate])
             if (requestedValidations > 0 && completedValidations != requestedValidations) { //Did we complete all given validation istructions
@@ -176,7 +187,7 @@ object FastParsingStage {
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
 
             val xmlRootEndTag = Some(extractEndTag(lastChunk.utf8String))
-            if (xmlRootEndTag!= xmlRootOpeningTag ) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
+            if (xmlRootEndTag != xmlRootOpeningTag) { //If we interrupted parsing, we still extract the closing xml tag and check if the document was not cut in half
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
             }
           }.recover(recoverFromErrors)
@@ -436,7 +447,7 @@ object FastParsingStage {
         }
 
 
-        private def endTagsMismatch() =xmlStopParsing match {
+        private def endTagsMismatch() = xmlStopParsing match {
           case Some(stopParsing) if numberOfUnclosedXMLTags == 0 => false
           case Some(stopParsing) if numberOfUnclosedXMLTags == stopParsing.xPath.length => false
           case None if numberOfUnclosedXMLTags == 0 => false
@@ -447,6 +458,7 @@ object FastParsingStage {
         /**
           * Extract the closing xml tag from a piece of string. Means turning:
           * </theTag> into theTag  or </ns55:theTag> into theTag
+          *
           * @param in
           * @return
           */
@@ -460,16 +472,17 @@ object FastParsingStage {
 
         /**
           * Update our buffer storing the last bytes only
+          *
           * @param in
           */
         private def updateLastChunk(in: ByteString) = {
           if (in.size > lastChunkBufferSize) { //If we have enough data to fill the whole buffer from the incoming data
             lastChunk = in.takeRight(lastChunkBufferSize)
-          } else {  //the incoming data is less than the buffer size, so we have to add it at the end of the existing content
+          } else { //the incoming data is less than the buffer size, so we have to add it at the end of the existing content
             val temp = lastChunk ++ in
-            if (temp.size > lastChunkBufferSize) {  //Add the incoming data chunk, and shorten it to be able to fit  into the buffer
+            if (temp.size > lastChunkBufferSize) { //Add the incoming data chunk, and shorten it to be able to fit  into the buffer
               lastChunk = temp.takeRight(lastChunkBufferSize)
-            } else {  //Add the whole incoming data chunk
+            } else { //Add the whole incoming data chunk
               lastChunk = temp
             }
           }
