@@ -79,7 +79,8 @@ private object AppDependencies {
         "org.scalatest" %% "scalatest" % "2.2.4" % scope,
         "org.pegdown" % "pegdown" % "1.5.0" % scope,
         "org.mockito" % "mockito-core" % "1.9.0",
-        "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.14"
+        "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.14",
+        "uk.gov.hmrc" %% "hmrctest"  % "3.1.0"
 
       )
     }.test

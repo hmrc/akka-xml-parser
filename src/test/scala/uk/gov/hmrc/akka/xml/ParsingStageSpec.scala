@@ -47,7 +47,7 @@ class ParsingStageSpec extends FlatSpec {
     val idHeader = XMLExtract(List("xml","header","id"))
     val aaHeader = XMLExtract(List("xml","header","aa"))
 
-    //This is our entire test xml: <xml><header><id>Joska</id><aa>Pista</aa><bb>Miska</bb></header></xml>  //The test xml
+    //This is our entire test xml: <xml><header><id>Joska</id><aa>Pista</aa><bb>Miska</bb><cc/></header></xml>  //The test xml
 
     val (pub,sub) = createStream(Seq(idHeader,aaHeader))
     sub.request(10)
@@ -61,8 +61,8 @@ class ParsingStageSpec extends FlatSpec {
     sub.expectNext((ByteString("d><aa>Pista</a"),Set(XMLElement(List("xml", "header", "id"),Map(),Some("Joska")))))
     pub.sendNext(ParsingData(ByteString("a><bb>Mis"),Set.empty,38))
     sub.expectNext((ByteString("a><bb>Mis"),Set(XMLElement(List("xml", "header", "aa"),Map(),Some("Pista")))))
-    pub.sendNext(ParsingData(ByteString("ka</bb></he"),Set.empty,45))
-    sub.expectNext(getEmptyResult("ka</bb></he"))
+    pub.sendNext(ParsingData(ByteString("ka</bb><cc/></he"),Set.empty,50))
+    sub.expectNext(getEmptyResult("ka</bb><cc/></he"))
     pub.sendNext(ParsingData(ByteString("ader></xml>"),Set.empty,57))
     sub.expectNext(getEmptyResult("ader></xml>"))
     pub.sendComplete()

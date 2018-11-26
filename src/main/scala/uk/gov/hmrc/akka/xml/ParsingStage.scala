@@ -182,8 +182,12 @@ object ParsingStage {
                     xmlElements.add(ele)
 
                   case e@XMLExtract(_, _, true) if node.toList == e.xPath | elementBlockExtracting =>
-                    elementBlockExtracting = true
-                    elementBlock.append(extractBytes(parsingData.data, start, end).utf8String)
+                    val extracted = extractBytes(parsingData.data, start, end).utf8String
+
+                    if (!extracted.endsWith("/>")) {
+                        elementBlockExtracting = true
+                        elementBlock.append(extracted)
+                    }
 
                   case e: XMLUpdate if e.xPath == node.slice(0, e.xPath.length) =>
                     e.xPath match {
