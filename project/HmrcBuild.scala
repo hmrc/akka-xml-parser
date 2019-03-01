@@ -19,6 +19,7 @@ import sbt.Keys._
 import scoverage.ScoverageKeys
 import uk.gov.hmrc.versioning.SbtGitVersioning
 import uk.gov.hmrc.versioning.SbtGitVersioning.autoImport.majorVersion
+import uk.gov.hmrc.SbtArtifactory.autoImport.makePublicallyAvailableOnBintray
 
 object HmrcBuild extends Build {
 
@@ -36,8 +37,8 @@ object HmrcBuild extends Build {
       libraryDependencies ++= AppDependencies(),
       crossScalaVersions := Seq("2.11.8"),
       scoverageSettings,
-      majorVersion := 0
-    )
+      majorVersion := 0,
+      makePublicallyAvailableOnBintray := true)
 
   lazy val scoverageSettings = {
     import scoverage.ScoverageSbtPlugin._
