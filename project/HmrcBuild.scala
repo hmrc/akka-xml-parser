@@ -40,7 +40,7 @@ object HmrcBuild extends Build {
         "typesafe-releases" at "http://repo.typesafe.com/typesafe/releases/"
       ),
       scoverageSettings,
-      majorVersion := 1
+      majorVersion := 0
     )
 
   lazy val scoverageSettings = {
