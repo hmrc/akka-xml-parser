@@ -17,9 +17,8 @@
 import sbt._
 import sbt.Keys._
 import scoverage.ScoverageKeys
-import uk.gov.hmrc.PublishingSettings._
-import uk.gov.hmrc.SbtAutoBuildPlugin
 import uk.gov.hmrc.versioning.SbtGitVersioning
+import uk.gov.hmrc.versioning.SbtGitVersioning.autoImport.majorVersion
 
 object HmrcBuild extends Build {
 
@@ -31,7 +30,7 @@ object HmrcBuild extends Build {
   val appName = "akka-xml-parser"
 
   lazy val microservice = Project(appName, file("."))
-    .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
+    .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning, SbtArtifactory)
     .settings(
       scalaVersion := "2.11.8",
       libraryDependencies ++= AppDependencies(),
@@ -40,7 +39,8 @@ object HmrcBuild extends Build {
         Resolver.bintrayRepo("hmrc", "releases"),
         "typesafe-releases" at "http://repo.typesafe.com/typesafe/releases/"
       ),
-      scoverageSettings
+      scoverageSettings,
+      majorVersion := 1
     )
 
   lazy val scoverageSettings = {
