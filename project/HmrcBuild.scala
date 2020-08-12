@@ -37,6 +37,11 @@ object HmrcBuild extends Build {
     .settings(
       scalaVersion := "2.11.8",
       libraryDependencies ++= AppDependencies(),
+      dependencyOverrides += "com.typesafe.akka" %% "akka-actor" % "2.5.23",
+      dependencyOverrides += "com.typesafe.akka" %% "akka-slf4j" % "2.5.23",
+      dependencyOverrides += "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.23",
+      dependencyOverrides += "com.typesafe.akka" %% "akka-stream" % "2.5.23",
+      dependencyOverrides += "com.typesafe.akka" %% "akka-testkit" % "2.5.23",
       crossScalaVersions := Seq("2.11.8"),
       resolvers := Seq(
         Resolver.bintrayRepo("hmrc", "releases"),
