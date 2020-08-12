@@ -20,6 +20,7 @@ import scoverage.ScoverageKeys
 import uk.gov.hmrc.PublishingSettings._
 import uk.gov.hmrc.SbtAutoBuildPlugin
 import uk.gov.hmrc.versioning.SbtGitVersioning
+import uk.gov.hmrc.versioning.SbtGitVersioning.autoImport.majorVersion
 
 object HmrcBuild extends Build {
 
@@ -32,6 +33,7 @@ object HmrcBuild extends Build {
 
   lazy val microservice = Project(appName, file("."))
     .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
+    .settings(majorVersion := 1)
     .settings(
       scalaVersion := "2.11.8",
       libraryDependencies ++= AppDependencies(),
