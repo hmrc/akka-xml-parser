@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.akka.xml
 
-import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLStreamReader}
-
 import scala.collection.mutable.ArrayBuffer
 
 trait ExtractStageHelpers {

@@ -16,9 +16,9 @@
 
 import akka.stream.scaladsl.{Keep, Source}
 import akka.util.ByteString
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, Matchers}
 import uk.gov.hmrc.akka.xml._
 import uk.gov.hmrc.play.test.UnitSpec
