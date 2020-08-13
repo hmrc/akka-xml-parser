@@ -16,19 +16,16 @@
 
 package uk.gov.hmrc.akka.xml
 
-import javax.xml.stream.XMLStreamConstants
-
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
-import com.fasterxml.aalto.in.CharSourceBootstrapper
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
+import javax.xml.stream.XMLStreamConstants
 
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Try}
 
@@ -182,7 +179,6 @@ object CompleteChunkStage {
         var totalProcessedLength = 0
         val streamBuffer = ArrayBuffer[Byte]()
         val incompleteBytes = ArrayBuffer[Byte]()
-        val xmlElements = mutable.Set[XMLElement]()
 
         var tagsCounter = 0
         var isFirstChunk = true

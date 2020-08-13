@@ -37,12 +37,12 @@ import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl._
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
+import com.github.ghik.silencer.silent
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-//import akka.stream.testkit.TestSubscriber._
-import scala.util.{Success, Failure}
-import scala.concurrent.duration._
+import org.mockito.scalatest.MockitoSugar
+
+import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
@@ -173,6 +173,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
 
     val timeStarted = System.currentTimeMillis()
 
+    @silent("deprecated")
     val wholeSystem = Flow[ByteString]
       .via(MinimumChunk.parser(1024))
       .via(CompleteChunkStage.parser(Some(25000000)))
@@ -203,6 +204,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ParsingData](as)
     val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
+    @silent("deprecated")
     val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
 
     val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach { a => if (a._2.size > 0) {

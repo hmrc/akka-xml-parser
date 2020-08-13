@@ -20,6 +20,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink}
 import akka.util.ByteString
+import com.github.ghik.silencer.silent
 
 import scala.concurrent.Future
 
@@ -58,12 +59,14 @@ trait XMLParserFixtures {
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
+    @silent("deprecated")
     def parseToPrint(instructions: Seq[XMLInstruction]) = Flow[ByteString]
       .via(CompleteChunkStage.parser())
       .via(ParsingStage.parser(instructions))
       .via(flowByteStringPrint)
       .toMat(Sink.ignore)(Keep.right)
 
+    @silent("deprecated")
     def parseToByteStringViaTransform(instructions: Set[XMLInstruction]) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser())

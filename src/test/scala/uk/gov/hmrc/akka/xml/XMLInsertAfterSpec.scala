@@ -20,7 +20,6 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
 
 /**
   * Created by abhishek on 22/03/17.
@@ -28,7 +27,6 @@ import org.scalatest.mock.MockitoSugar
 class XMLInsertAfterSpec extends FlatSpec
   with Matchers
   with ScalaFutures
-  with MockitoSugar
   with Eventually
   with XMLParserFixtures {
   val f = fixtures

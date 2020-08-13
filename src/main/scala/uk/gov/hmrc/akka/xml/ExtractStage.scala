@@ -104,7 +104,6 @@ object ExtractStage {
         }
 
         private var chunk = ByteString("")
-        private var isCharacterBuffering = false
 
         private val node = ArrayBuffer[String]()
         private val xmlElements = mutable.Set[XMLGroupElement]()
@@ -145,7 +144,6 @@ object ExtractStage {
 
               case XMLStreamConstants.END_ELEMENT =>
                 val localName = parser.getLocalName
-                isCharacterBuffering = false
 
                 groupings collect {
                   case nodes if nodes.contains(localName) =>
@@ -171,7 +169,6 @@ object ExtractStage {
                     case XMLExtract(`node`, _, false) =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
-                        isCharacterBuffering = true
                         bufferedText.append(t)
                       }
 

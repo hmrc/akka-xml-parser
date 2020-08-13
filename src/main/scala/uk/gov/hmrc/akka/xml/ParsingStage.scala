@@ -151,7 +151,6 @@ object ParsingStage {
         }
 
         var parsingData = ParsingData(ByteString(""), Set.empty, 0)
-        var isCharacterBuffering = false
         var chunkOffset = 0
         var continueParsing = true
         var elementBlockExtracting: Boolean = false
@@ -225,7 +224,6 @@ object ParsingStage {
                 advanceParser()
 
               case XMLStreamConstants.END_ELEMENT =>
-                isCharacterBuffering = false
                 instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _, false) =>
@@ -282,14 +280,12 @@ object ParsingStage {
                     case e@XMLExtract(`node`, _, false) =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
-                        isCharacterBuffering = true
                         bufferedText.append(t)
                       }
 
                     case e@XMLExtract(_, _, true) if elementBlockExtracting =>
                       val t = parser.getText()
                       if (t.trim.length > 0) {
-                        isCharacterBuffering = true
                         elementBlock.append(t)
                       }
 

@@ -16,14 +16,13 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
-import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
-import akka.stream.testkit.scaladsl.TestSink
-import akka.stream.testkit.scaladsl.TestSource
+import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import akka.util.ByteString
+import com.github.ghik.silencer.silent
+import org.scalatest.FlatSpec
 
 class CompleteChunkSpec extends FlatSpec {
 
@@ -32,6 +31,7 @@ class CompleteChunkSpec extends FlatSpec {
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ParsingData](as)
+    @silent("deprecated")
     val chunk = CompleteChunkStage.parser()
 
     //source.map(a => {println("<< " + a.decodeString("UTF-8"));a}).via(chunk).alsoTo(Sink.foreach(a => println(">> " + a))).toMat(sink)(Keep.both).run()(am)  //Use for debugging

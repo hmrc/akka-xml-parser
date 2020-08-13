@@ -50,7 +50,7 @@ object TransformStage {
 
     override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new GraphStageLogic(shape) {
-        private var buffer = ByteString.empty
+        private val buffer = ByteString.empty
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -116,7 +116,7 @@ object TransformStage {
                     }
 
                   case e: XMLRemoveNamespacePrefix if (node == e.xPath && e.removeForStartTag) => {
-                    val prefix = Option(parser.getPrefix) match {
+                    val _ = Option(parser.getPrefix) match {
                       case Some(pre) if pre.length > 0 =>
                         streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
                         streamBuffer ++= ByteString("<")
@@ -146,7 +146,7 @@ object TransformStage {
                       }
 
                     case e: XMLRemoveNamespacePrefix if (node == e.xPath && e.removeForEndTag) => {
-                      val prefix = Option(parser.getPrefix) match {
+                      val _ = Option(parser.getPrefix) match {
                         case Some(pre) if pre.length > 0 =>
                           streamBuffer ++= extractBytes(parsingData.data, chunkOffset, elementStart)
                           streamBuffer ++= ByteString("</")

@@ -18,8 +18,6 @@ package uk.gov.hmrc.akka.xml
 
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
-
-import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
