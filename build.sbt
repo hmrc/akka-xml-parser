@@ -5,7 +5,7 @@ val appName = "akka-xml-parser"
 
 lazy val microservice = Project(appName, file("."))
   .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
-  .settings(majorVersion := 1)
+  .settings(majorVersion := 0)
   .settings(DefaultBuildSettings.scalaSettings)
   .settings(DefaultBuildSettings.defaultSettings())
   .settings(
