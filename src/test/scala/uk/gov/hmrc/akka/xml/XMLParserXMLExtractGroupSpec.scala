@@ -34,12 +34,11 @@ package uk.gov.hmrc.akka.xml
 
 import akka.stream.scaladsl.{Keep, Source}
 import akka.util.ByteString
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.mockito.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
-class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
+class XMLParserXMLExtractGroupSpec extends FlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar

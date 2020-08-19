@@ -18,13 +18,12 @@ package uk.gov.hmrc.akka.xml
 
 import akka.stream.scaladsl.{Keep, Source}
 import akka.util.ByteString
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatestplus.mockito.MockitoSugar
 
-class XMLParserXMLExtractNamespaceSpec extends AnyFlatSpec
+class XMLParserXMLExtractNamespaceSpec extends FlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
