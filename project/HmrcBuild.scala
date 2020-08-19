@@ -34,9 +34,9 @@ object HmrcBuild extends Build {
     .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
     .settings(version := "1.0")
     .settings(
-      scalaVersion := "2.11.8",
+      scalaVersion := "2.12.0",
       libraryDependencies ++= AppDependencies(),
-      crossScalaVersions := Seq("2.11.8"),
+      crossScalaVersions := Seq("2.12.0"),
       resolvers := Seq(
         Resolver.bintrayRepo("hmrc", "releases"),
         "typesafe-releases" at "http://repo.typesafe.com/typesafe/releases/"
@@ -64,6 +64,7 @@ private object AppDependencies {
 
   val compile = Seq(
     "com.typesafe.play" %% "play" % PlayVersion.current,
+    "com.vladsch.flexmark" % "flexmark-all" % "0.35.10",
     ws,
     "com.fasterxml" % "aalto-xml" % "1.0.0"
   )
@@ -77,7 +78,8 @@ private object AppDependencies {
     def apply() = new TestDependencies {
       override lazy val test = Seq(
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
-        "org.scalatest" %% "scalatest" % "2.2.4" % scope,
+        "org.scalatest" %% "scalatest" % "3.2.0" % scope,
+        "org.scalatestplus" %% "mockito-3-4" % "3.2.1.0" % "test",
         "org.pegdown" % "pegdown" % "1.5.0" % scope,
         "org.mockito" % "mockito-core" % "1.9.0",
         "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.14"

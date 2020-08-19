@@ -18,14 +18,15 @@ package uk.gov.hmrc.akka.xml
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.mockito.MockitoSugar
 
 /**
   * Created by christine on 24/03/17.
   */
-class XMLParserTransformSpec extends FlatSpec
+class XMLParserTransformSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
