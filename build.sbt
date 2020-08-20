@@ -18,7 +18,6 @@ lazy val microservice = Project(appName, file("."))
     ),
     scoverageSettings
   )
-  .settings(SilencerSettings())
 
 lazy val scoverageSettings = {
   Seq(
