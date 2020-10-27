@@ -9,9 +9,9 @@ lazy val microservice = Project(appName, file("."))
   .settings(DefaultBuildSettings.scalaSettings)
   .settings(DefaultBuildSettings.defaultSettings())
   .settings(
-    scalaVersion := "2.12.10",
+    scalaVersion := "2.12.12",
     libraryDependencies ++= AppDependencies(),
-    crossScalaVersions := Seq("2.11.12", "2.12.10"),
+    crossScalaVersions := Seq("2.11.12", "2.12.12"),
     resolvers := Seq(
       Resolver.bintrayRepo("hmrc", "releases"),
       "typesafe-releases" at "https://repo.typesafe.com/typesafe/releases/"

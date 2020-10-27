@@ -1,17 +1,19 @@
 import sbt._
+object AppDependencies{
 
-object AppDependencies {
-
-  import play.core.PlayVersion
-  import play.sbt.PlayImport._
+  val akkaVersion = "2.5.26"
+  val akkaHttpVersion = "10.0.15"
 
   val compile = Seq(
-    ws,
-    "com.fasterxml" % "aalto-xml" % "1.0.0"
+    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "com.typesafe.akka" %% "akka-protobuf" % akkaVersion,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+    "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion,
+    "com.fasterxml" % "aalto-xml" % "1.2.2"
   )
 
   val test = Seq(
-    "com.typesafe.play" %% "play-test" % PlayVersion.current % "test",
     "org.pegdown" % "pegdown" % "1.6.0" % "test",
     // needs to be 1.7.1 for scalatest dependency to match hmrctest's scalatest dependency
     "org.mockito" %% "mockito-scala-scalatest" % "1.7.1" % "test",

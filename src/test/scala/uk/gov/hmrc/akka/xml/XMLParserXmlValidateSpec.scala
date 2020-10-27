@@ -1,43 +1,11 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
- * Copyright 2016 HM Revenue & Customs
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http:www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
- * Copyright 2016 HM Revenue & Customs
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http:www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,7 +37,7 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
   val f = fixtures
   implicit override val patienceConfig =
-    PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(2, Millis))
 
   import f._
 
@@ -77,9 +45,9 @@ class XMLParserXmlValidateSpec extends FlatSpec
 
 
   it should "validate successfully the specified data against a supplied function" in {
-    val source = Source.single(ByteString("ï»¿<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"))
+    val source = Source.single(ByteString("<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"))
     val validatingFunction: String => Option[ParserValidationError] = (string: String) =>
-      if (string == "<body><foo>test</foo><bar>test</bar>") None else Some(new ParserValidationError {})
+      if (string == "<body><foo>test</foo><bar>test</bar>") None else Some(new ParserValidationError {val error = "stuff" })
     val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "test"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>

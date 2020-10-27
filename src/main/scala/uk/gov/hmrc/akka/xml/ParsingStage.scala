@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,16 +63,26 @@ object ParsingStage {
 
         private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
         private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
+        var completeStageCalled = false
+
+        def safelyCompleteStage(): Unit = {
+          if(!completeStageCalled) {
+            completeStage()
+            completeStageCalled = true
+          } else {
+            //we've already called completeStage so do nothing
+          }
+        }
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
-            processStage(processOnPush)
+            processOnPush().recover(recoverParsingExceptions)
           }
 
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
-            processStage(processOnUpstreamFinish)
-            completeStage()
+            processOnUpstreamFinish().recover(recoverParsingExceptions)
+            safelyCompleteStage()
           }
         })
 
@@ -96,6 +106,7 @@ object ParsingStage {
               if (parsingData.totalProcessedLength > (validationMaxSize.getOrElse(0) + validationMaxSizeOffset) &&
                 instructions.collect { case e: XMLValidate => e }.exists(!completedInstructions.contains(_))) {
                 throw new NoValidationTagsFoundWithinFirstNBytesException
+
               }
             } else {
               push(out, (parsingData.data, Set.empty[XMLElement]))
@@ -118,32 +129,31 @@ object ParsingStage {
           }
         }
 
-        def processStage(f: () => Try[Unit]) = {
-          f().recover {
+        def recoverParsingExceptions: PartialFunction[Throwable,Unit] = {
             case e: WFCException =>
               emitStage(
                 XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-              completeStage()
+              safelyCompleteStage()
             case e: NoValidationTagsFoundWithinFirstNBytesException =>
               emitStage(
                 XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
                   Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
                 XMLElement(Nil, Map(STREAM_SIZE -> parsingData.totalProcessedLength.toString), Some(STREAM_SIZE)))
-              completeStage()
+              safelyCompleteStage()
             case e: IncompleteXMLValidationException =>
               emitStage(
                 XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
                   Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
-              completeStage()
+              safelyCompleteStage()
             case e: ParserValidationError =>
               emitStage(
                 XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE))
               )
-              completeStage()
+              safelyCompleteStage()
             case e: Throwable =>
               throw e
           }
-        }
+
 
         private def emitStage(elementsToAdd: XMLElement*) = {
           emit(out, ((parsingData.data), getCompletedXMLElements(xmlElements).toSet ++ parsingData.extractedElements ++ elementsToAdd))
@@ -221,7 +231,7 @@ object ParsingStage {
 
               case XMLStreamConstants.END_ELEMENT =>
                 isCharacterBuffering = false
-                instructions.diff(completedInstructions).foreach(f = (e: XMLInstruction) => {
+                instructions.diff(completedInstructions).foreach((e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _, false) =>
                       update(xmlElements, node, Some(bufferedText.toString()))
@@ -272,7 +282,7 @@ object ParsingStage {
                 advanceParser()
 
               case XMLStreamConstants.CHARACTERS =>
-                instructions.foreach(f = (e: XMLInstruction) => {
+                instructions.foreach((e: XMLInstruction) => {
                   e match {
                     case e@XMLExtract(`node`, _, false) =>
                       val t = parser.getText()
