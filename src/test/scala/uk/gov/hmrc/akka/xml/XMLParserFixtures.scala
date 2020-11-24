@@ -21,6 +21,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink}
 import akka.util.ByteString
 import com.github.ghik.silencer.silent
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.concurrent.Future
 
@@ -31,7 +32,13 @@ trait XMLParserFixtures {
 
   def fixtures = new {
 
-    implicit val system = ActorSystem("XMLParser")
+
+    val testConf: Config = ConfigFactory.parseString("""
+    akka.loglevel = DEBUG
+    akka.stream.materializer.debug-logging = on
+    akka.stream.materializer.debug.fuzzing-mode = on
+    """)
+    implicit val system = ActorSystem("XMLParser",testConf)
     implicit val mat = ActorMaterializer()
 
     def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None) = Flow[ByteString]
