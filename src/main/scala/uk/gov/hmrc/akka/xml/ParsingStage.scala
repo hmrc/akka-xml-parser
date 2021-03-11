@@ -69,8 +69,6 @@ object ParsingStage {
           if(!completeStageCalled) {
             completeStage()
             completeStageCalled = true
-          } else {
-            //we've already called completeStage so do nothing
           }
         }
 

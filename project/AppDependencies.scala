@@ -6,10 +6,6 @@ object AppDependencies{
 
   val compile = Seq(
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-    "com.typesafe.akka" %% "akka-protobuf" % akkaVersion,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-    "com.typesafe.akka" %% "akka-actor" % akkaVersion,
-    "com.typesafe.akka" %% "akka-http-core" % akkaHttpVersion,
     "com.fasterxml" % "aalto-xml" % "1.2.2"
   )
 
