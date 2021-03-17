@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,14 @@ object ParsingStage {
 
         private val feeder: AsyncXMLInputFactory = new InputFactoryImpl()
         private val parser: AsyncXMLStreamReader[AsyncByteArrayFeeder] = feeder.createAsyncFor(Array.empty)
+        var completeStageCalled = false
+
+        def safelyCompleteStage(): Unit = {
+          if(!completeStageCalled) {
+            completeStage()
+            completeStageCalled = true
+          }
+        }
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -73,7 +81,7 @@ object ParsingStage {
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
             processStage(processOnUpstreamFinish)
-            completeStage()
+            safelyCompleteStage()
           }
         })
 
@@ -124,23 +132,23 @@ object ParsingStage {
             case e: WFCException =>
               emitStage(
                 XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-              completeStage()
+              safelyCompleteStage()
             case e: NoValidationTagsFoundWithinFirstNBytesException =>
               emitStage(
                 XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""),
                   Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)),
                 XMLElement(Nil, Map(STREAM_SIZE -> parsingData.totalProcessedLength.toString), Some(STREAM_SIZE)))
-              completeStage()
+              safelyCompleteStage()
             case e: IncompleteXMLValidationException =>
               emitStage(
                 XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""),
                   Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
-              completeStage()
+              safelyCompleteStage()
             case e: ParserValidationError =>
               emitStage(
                 XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE))
               )
-              completeStage()
+              safelyCompleteStage()
             case e: Throwable =>
               throw e
           }

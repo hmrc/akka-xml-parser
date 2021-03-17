@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 HM Revenue & Customs
+ * Copyright 2021 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ object FastParsingStage {
         val xmlStopParsing = instructions.collect { case sp: XMLStopParsing => sp }.headOption
         val maxParsingSize = xmlStopParsing.flatMap(a => a.maxParsingSize) //if no maximum validation size was given we will parse the whole document
         val lastChunkBufferSize = 32 //How much data should we store in the lastChunk buffer
+        var completeStageCalled = false
 
         setHandler(in, new InHandler {
           override def onPush(): Unit = {
@@ -108,7 +109,7 @@ object FastParsingStage {
           override def onUpstreamFinish(): Unit = {
             parser.getInputFeeder.endOfInput()
             processUpstreamFinish()
-            completeStage()
+            safelyCompleteStage()
           }
         })
 
@@ -117,6 +118,13 @@ object FastParsingStage {
             pull(in)
           }
         })
+
+        def safelyCompleteStage(): Unit = {
+          if(!completeStageCalled) {
+            completeStage()
+            completeStageCalled = true
+          }
+        }
 
         def processPush(): Unit = {
           var incomingData = grab(in) //This is a var for a reason. We don't want to copy to another variable every time, when we only change it very few times
@@ -190,29 +198,31 @@ object FastParsingStage {
               throw new WFCException(XML_START_END_TAGS_MISMATCH, parser.getLocation)
             }
           }.recover(recoverFromErrors)
-          emitStage()
+          if(!completeStageCalled){
+            emitStage()
+          }
         }
 
         private def recoverFromErrors(): PartialFunction[Throwable, Unit] = {
           case e: WFCException =>
             incompleteBytes.prependAll(parsingData.toArray)
             emitStage(XMLElement(Nil, Map(MALFORMED_STATUS -> e.getMessage), Some(MALFORMED_STATUS)))
-            completeStage()
+            safelyCompleteStage()
           case e: NoValidationTagsFoundWithinFirstNBytesException =>
             emitStage(XMLElement(Nil, Map(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE)))
-            completeStage()
+            safelyCompleteStage()
           case e: IncompleteXMLValidationException =>
             emitStage(XMLElement(Nil, Map(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE)))
-            completeStage()
+            safelyCompleteStage()
           case e: MaxSizeError =>
             emitStage(XMLElement(Nil, Map.empty, Some(STREAM_MAX_SIZE)))
-            completeStage()
+            safelyCompleteStage()
           case e: EmptyStreamError =>
             emitStage(XMLElement(Nil, Map.empty, Some(STREAM_IS_EMPTY)))
-            completeStage()
+            safelyCompleteStage()
           case e: ParserValidationError =>
             emitStage(XMLElement(Nil, Map(VALIDATION_INSTRUCTION_FAILURE -> e.toString), Some(VALIDATION_INSTRUCTION_FAILURE)))
-            completeStage()
+            safelyCompleteStage()
           case e: Throwable =>
             throw e
         }
