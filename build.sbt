@@ -9,7 +9,7 @@ lazy val microservice = Project(appName, file("."))
   .settings(DefaultBuildSettings.scalaSettings)
   .settings(DefaultBuildSettings.defaultSettings())
   .settings(
-    scalaVersion := "2.12.10",
+    scalaVersion := "2.12.12",
     libraryDependencies ++= AppDependencies(),
     resolvers := Seq(
       Resolver.bintrayRepo("hmrc", "releases"),
