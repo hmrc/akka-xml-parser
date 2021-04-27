@@ -11,10 +11,6 @@ lazy val microservice = Project(appName, file("."))
   .settings(
     scalaVersion := "2.12.12",
     libraryDependencies ++= AppDependencies(),
-    resolvers := Seq(
-      Resolver.bintrayRepo("hmrc", "releases"),
-      "typesafe-releases" at "https://repo.typesafe.com/typesafe/releases/"
-    ),
     scoverageSettings
   )
   .settings(SilencerSettings())
