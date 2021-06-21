@@ -19,13 +19,13 @@ import akka.util.ByteString
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.{BeforeAndAfterEach, Matchers}
+import org.scalatest.{BeforeAndAfterEach, Matchers, OptionValues, WordSpecLike}
 import uk.gov.hmrc.akka.xml._
-import uk.gov.hmrc.play.test.UnitSpec
+import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class OutputXMLMatchesInputXMLSpec extends UnitSpec with BeforeAndAfterEach with Matchers with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
+class OutputXMLMatchesInputXMLSpec extends WordSpecLike with Matchers with OptionValues with BeforeAndAfterEach with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
 
   val inputXml                        = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><PostCode>Tf3 4NT</PostCode></Address>"
   val inputXmlWithSelfClosingElement  = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><Line/><PostCode>Tf3 4NT</PostCode></Address>"
