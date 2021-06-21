@@ -14,7 +14,7 @@ object AppDependencies {
     // needs to be 1.7.1 for scalatest dependency to match hmrctest's scalatest dependency
     "org.mockito" %% "mockito-scala-scalatest" % "1.7.1" % "test",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test",
-    "uk.gov.hmrc" %% "bootstrap-test-play-27" % "3.4.0" % "test, it",
+    "uk.gov.hmrc" %% "bootstrap-test-play-27" % "3.4.0" % "test",
     "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3" % "test"
   )
 
