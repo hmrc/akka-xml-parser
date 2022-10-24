@@ -9,11 +9,10 @@ lazy val microservice = Project(appName, file("."))
   .settings(DefaultBuildSettings.scalaSettings)
   .settings(DefaultBuildSettings.defaultSettings())
   .settings(
-    scalaVersion := "2.12.12",
+    scalaVersion := "2.13.8",
     libraryDependencies ++= AppDependencies(),
     scoverageSettings
   )
-  .settings(SilencerSettings())
 
 lazy val scoverageSettings = {
   Seq(

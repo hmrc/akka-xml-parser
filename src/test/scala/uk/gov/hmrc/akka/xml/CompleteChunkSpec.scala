@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.github.ghik.silencer.silent
 import org.scalatest.FlatSpec
 
 class CompleteChunkSpec extends FlatSpec {
@@ -31,7 +30,6 @@ class CompleteChunkSpec extends FlatSpec {
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ParsingData](as)
-    @silent("deprecated")
     val chunk = CompleteChunkStage.parser()
 
     //source.map(a => {println("<< " + a.decodeString("UTF-8"));a}).via(chunk).alsoTo(Sink.foreach(a => println(">> " + a))).toMat(sink)(Keep.both).run()(am)  //Use for debugging

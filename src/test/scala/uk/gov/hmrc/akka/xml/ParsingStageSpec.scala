@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.github.ghik.silencer.silent
 import org.scalatest.FlatSpec
 
 class ParsingStageSpec extends FlatSpec {
@@ -32,7 +31,6 @@ class ParsingStageSpec extends FlatSpec {
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ParsingData](as)
     val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
-    @silent("deprecated")
     val chunk = ParsingStage.parser(instructions)
 
     //source.via(chunk).alsoTo(Sink.foreach(a => println(">> " + a._1.decodeString("UTF-8") + " | " + a._2))).toMat(sink)(Keep.both).run()(am)

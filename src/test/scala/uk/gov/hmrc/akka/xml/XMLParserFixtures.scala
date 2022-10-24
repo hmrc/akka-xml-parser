@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Keep, Sink}
 import akka.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
-import com.github.ghik.silencer.silent
 
 import scala.concurrent.Future
 
@@ -65,14 +64,12 @@ trait XMLParserFixtures {
       .via(flowByteString)
       .toMat(collectByteString)(Keep.right)
 
-    @silent("deprecated")
     def parseToPrint(instructions: Seq[XMLInstruction]) = Flow[ByteString]
       .via(CompleteChunkStage.parser())
       .via(ParsingStage.parser(instructions))
       .via(flowByteStringPrint)
       .toMat(Sink.ignore)(Keep.right)
 
-    @silent("deprecated")
     def parseToByteStringViaTransform(instructions: Set[XMLInstruction]) = Flow[ByteString]
       .via(MinimumChunk.parser(15))
       .via(CompleteChunkStage.parser())

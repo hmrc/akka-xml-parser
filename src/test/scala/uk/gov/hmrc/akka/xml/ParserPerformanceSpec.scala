@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 HM Revenue & Customs
+ * Copyright 2022 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl._
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.github.ghik.silencer.silent
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.mockito.scalatest.MockitoSugar
@@ -173,7 +172,6 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
 
     val timeStarted = System.currentTimeMillis()
 
-    @silent("deprecated")
     val wholeSystem = Flow[ByteString]
       .via(MinimumChunk.parser(1024))
       .via(CompleteChunkStage.parser(Some(25000000)))
@@ -204,7 +202,6 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     val am = ActorMaterializer()(as)
     val source = TestSource.probe[ParsingData](as)
     val sink = TestSink.probe[(ByteString, Set[XMLElement])](as)
-    @silent("deprecated")
     val chunk = ParsingStage.parser(submissionInstructions, Some(2000), 0)
 
     val (pub, sub) = source.via(chunk).alsoTo(Sink.foreach { a => if (a._2.size > 0) {
