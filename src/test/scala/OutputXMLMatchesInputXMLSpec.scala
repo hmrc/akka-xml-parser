@@ -21,7 +21,6 @@ import org.scalatest
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.{BeforeAndAfterEach, Matchers, OptionValues, WordSpecLike}
 import uk.gov.hmrc.akka.xml._
-import play.api.test.Helpers._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -38,8 +37,7 @@ class OutputXMLMatchesInputXMLSpec extends WordSpecLike with Matchers with Optio
   def parseAndCompare(inputXml: String): scalatest.Assertion = {
     val inputXmlSource: Source[ByteString, _] = Source.single(ByteString(inputXml))
 
-    await(
-      for {
+    val result = for {
         parsedXmlElements <- inputXmlSource
           .via(CompleteChunkStage.parser())
           .via(ParsingStage.parser(Seq(XMLExtract(Seq("Address"), Map.empty, true))))
@@ -49,16 +47,16 @@ class OutputXMLMatchesInputXMLSpec extends WordSpecLike with Matchers with Optio
 
         parsedXml = xpathValue(parsedXmlElements, Seq("Address"))
       } yield {
-
-        val outputXml = parsedXml.get
-
+        parsedXml.get
+      }
+    
+      whenReady(result) { outputXml =>
         println(s"INPUT  XML = $inputXml")
         println(s"OUTPUT XML = $outputXml")
         println()
 
         outputXml shouldBe inputXml
       }
-    )
   }
 
 
