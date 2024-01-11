@@ -16,15 +16,16 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Created by abhishek on 22/03/17.
   */
-class XMLInsertAfterSpec extends FlatSpec
+class XMLInsertAfterSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with Eventually

@@ -16,11 +16,12 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream.{Attributes, FlowShape, Inlet, Outlet}
+import org.apache.pekko.util.ByteString
+
 import java.util.regex.Pattern
 
 /**
@@ -32,7 +33,7 @@ object XmlEncodingStage {
 
   val ENCODING_EXTRACTOR = Pattern.compile("""<\?xml.*?encoding="(.*?)".*""")
   val PROLOG_REGEX = """<\?xml(.*?)encoding="(.*?)"(.*?)\?>""" //<?xml version="1.0" encoding="ISO-8859-1"?>
-  val PROLOG_REGEX_ALL = """<\?xml(.*?)\?>"""  //Extract the entire body of the prolog
+  val PROLOG_REGEX_ALL = """<\?xml(.*?)\?>""" //Extract the entire body of the prolog
   val UTF8 = "UTF-8"
   val PROLOG_MAX_SIZE = 50
 
@@ -100,9 +101,9 @@ object XmlEncodingStage {
 
           if (incomingEncoding == outgoinEncoding) {
             incomingBytes //If the target encoding is the same as the incoming encoding, then we do nothing
-          } else {  //We need to re-encode
+          } else { //We need to re-encode
             val reEncoded = incomingBytes.decodeString(incomingEncoding) //Decode the incoming ByteString according to the encoding in the prolog
-          val prologReplaced = reEncoded.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"" + outgoinEncoding + "\"$3?>")
+            val prologReplaced = reEncoded.replaceAll(PROLOG_REGEX, "<?xml$1encoding=\"" + outgoinEncoding + "\"$3?>")
             if (ENCODING_EXTRACTOR.matcher(prologReplaced).find()) { //If there is an encoding in the prolog then all is fine
               ByteString.fromString(prologReplaced, outgoinEncoding) //Re-encode the xml according to the desired encoding
             } else { //There was no encoding attribute in the prolog, we put in one

@@ -16,14 +16,14 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.util.ByteString
-import org.scalatest.FlatSpec
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.util.ByteString
+import org.scalatest.flatspec.AnyFlatSpec
 
-class ParsingStageSpec extends FlatSpec {
+class ParsingStageSpec extends AnyFlatSpec {
 
 
   def createStream(instructions:Seq[XMLInstruction],validationMaxSize: Option[Int] = None) = {

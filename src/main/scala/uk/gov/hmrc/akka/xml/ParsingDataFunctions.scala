@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 
 /**
   * Created by abhishek on 12/12/16.

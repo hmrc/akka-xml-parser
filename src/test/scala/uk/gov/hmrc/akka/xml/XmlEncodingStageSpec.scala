@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.util.ByteString
-import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-import akka.stream.testkit.scaladsl.TestSink
-import akka.stream.testkit.scaladsl.TestSource
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.util.ByteString
+import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers with ScalaFutures with XMLParserFixtures {
+class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers with ScalaFutures with XMLParserFixtures {
 
   val fix = fixtures
 
@@ -105,7 +106,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
 
   it should "Convert UTF-8 encoding to Latin-1 for messages that are broken up into peaces" in {
     val msg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Body>£££££</Body></GovTalkMessage>"
-    val messages = getBrokenMessage("UTF-8",msg)
+    val messages = getBrokenMessage("UTF-8", msg)
     val (pub, sub) = createStreamFold("ISO-8859-1")
     sub.request(messages.length)
     messages.foreach(pub.sendNext _)
@@ -115,7 +116,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
 
   it should "Convert Latin-1 encoding to UTF-8 for messages that are broken up into peaces" in {
     val msg = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><Body>£££££</Body></GovTalkMessage>"
-    val messages = getBrokenMessage("ISO-8859-1",msg)
+    val messages = getBrokenMessage("ISO-8859-1", msg)
     val (pub, sub) = createStreamFold("UTF-8")
     sub.request(messages.length)
     messages.foreach(pub.sendNext _)
@@ -126,7 +127,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
 
   it should "Convert default (UTF-8) encoding to Latin-1 in case no encoding was defined in the prolog" in {
     val msg = "<?xml version=\"1.0\"?><Body>£££££</Body></GovTalkMessage>"
-    val messages = getBrokenMessage("UTF-8",msg)
+    val messages = getBrokenMessage("UTF-8", msg)
     val (pub, sub) = createStreamFold("ISO-8859-1")
     sub.request(messages.length)
     messages.foreach(pub.sendNext _)
@@ -136,7 +137,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
 
   it should "In the absence of prolog, we suppose UTF-8 for short messages" in {
     val msg = "<Body>£££££</Body></GovTalkMessage>"
-    val messages = getBrokenMessage("UTF-8",msg)
+    val messages = getBrokenMessage("UTF-8", msg)
     val (pub, sub) = createStreamFold("UTF-8")
     sub.request(messages.length)
     messages.foreach(pub.sendNext _)
@@ -148,7 +149,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
 
   it should "In the absence of prolog, we suppose UTF-8 for longer messages" in {
     val msg = "<GovTalkMessage><Body>£££££</Body><aaaa>££££££<aaaa><aaaa>££££££<aaaa><aaaa>££££££<aaaa><aaaa>££££££<aaaa></GovTalkMessage>"
-    val messages = getBrokenMessage("UTF-8",msg)
+    val messages = getBrokenMessage("UTF-8", msg)
     val (pub, sub) = createStreamFold("UTF-8")
     sub.request(messages.length)
     messages.foreach(pub.sendNext _)
@@ -220,7 +221,7 @@ class XmlEncodingStageSpec extends FlatSpec with BeforeAndAfter with Matchers wi
     * @param originalEncoding
     * @return
     */
-  def getBrokenMessage(originalEncoding: String, message2Break:String): List[ByteString] = {
+  def getBrokenMessage(originalEncoding: String, message2Break: String): List[ByteString] = {
     val rnd = scala.util.Random
     var sum = 0
     val lengths = new scala.collection.mutable.ArrayBuffer[Int]()
