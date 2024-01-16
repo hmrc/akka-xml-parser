@@ -35,7 +35,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
   with XMLParserFixtures {
 
   val f = fixtures
-  implicit override val patienceConfig =
+  implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
 
   import f._
@@ -53,8 +53,8 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
     val paths = Seq[XMLInstruction](XMLValidate(Seq("xml", "body"), Seq("xml", "body", "test"), validatingFunction))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "67")
-        , Some(CompleteChunkStage.STREAM_SIZE)))
+      r shouldBe Set(XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "67")
+        , Some(FastParsingStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><body><foo>test</foo><bar>test</bar><test></test></body></xml>"
@@ -87,7 +87,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "70"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "70"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -127,7 +127,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "77"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -158,7 +158,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r, ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE) shouldBe XMLElement(List(), Map(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE -> ""), Some(ParsingStage.NO_VALIDATION_TAGS_FOUND_IN_FIRST_N_BYTES_FAILURE))
-      findAttribute(r, CompleteChunkStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "8"), Some(CompleteChunkStage.STREAM_SIZE))
+      findAttribute(r, FastParsingStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "8"), Some(FastParsingStage.STREAM_SIZE))
     }
   }
 
@@ -185,7 +185,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       findAttribute(r, ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE) shouldBe XMLElement(List(), Map(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE -> ""), Some(ParsingStage.PARTIAL_OR_NO_VALIDATIONS_DONE_FAILURE))
-      findAttribute(r, CompleteChunkStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "45"), Some(CompleteChunkStage.STREAM_SIZE))
+      findAttribute(r, FastParsingStage.STREAM_SIZE) shouldBe XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "45"), Some(FastParsingStage.STREAM_SIZE))
     }
   }
 
@@ -199,7 +199,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "38"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "38"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -220,7 +220,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "77"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "77"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -244,7 +244,7 @@ class XMLParserXmlValidateSpec extends AnyFlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, None))) { r =>
       r shouldBe Set(
         XMLElement(List("xml", "root", "foo"), Map(), Some("test")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "66"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>

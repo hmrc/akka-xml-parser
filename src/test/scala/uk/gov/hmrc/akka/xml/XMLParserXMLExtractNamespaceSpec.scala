@@ -32,12 +32,12 @@ class XMLParserXMLExtractNamespaceSpec extends AnyFlatSpec
   with XMLParserFixtures {
 
   val f = fixtures
-  implicit override val patienceConfig =
+  implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
 
   import f._
 
-  behavior of "CompleteChunkStage#parser"
+  behavior of "FastParsingStage#parser"
 
 
   it should "Parse and extract several non-default namespaces" in {
@@ -71,7 +71,7 @@ class XMLParserXMLExtractNamespaceSpec extends AnyFlatSpec
       XMLElement(List("GovTalkMessage"), Map("xmlns:ns0" -> "http://www.govtalk.gov.uk/taxation/PAYE/RTI/EmployerPaymentSummary/13-14/2"), Some("")),
       XMLElement(List("GovTalkMessage"), Map("xmlns:ns4" -> "http://www.govtalk.gov.uk/taxation/PAYE/RTI/EmployerPaymentSummary/17-18/1"), Some("")),
       XMLElement(List("GovTalkMessage"), Map("xmlns:ns5" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "681"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "681"), Some(FastParsingStage.STREAM_SIZE))
     )
 
           whenReady(source.runWith(parseToXMLElements(paths))) { r =>

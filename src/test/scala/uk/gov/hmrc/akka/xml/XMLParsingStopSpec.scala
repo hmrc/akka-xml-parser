@@ -31,7 +31,7 @@ class XMLParsingStopSpec extends AnyFlatSpec
   with XMLParserFixtures {
 
   val f = fixtures
-  implicit override val patienceConfig =
+  implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
 
   import f._

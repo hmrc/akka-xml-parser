@@ -255,7 +255,7 @@ class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
     val source = Source.single(ByteString("malformed"))
 
     whenReady(source.runWith(parseToXMLGroupElements(Seq.empty))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
@@ -269,7 +269,7 @@ class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
@@ -284,7 +284,7 @@ class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
@@ -296,7 +296,7 @@ class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
     val paths = Seq.empty[XMLInstruction]
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
@@ -309,7 +309,7 @@ class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
     val paths = Seq.empty[XMLInstruction]
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>

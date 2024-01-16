@@ -17,7 +17,7 @@
 package uk.gov.hmrc.akka.xml
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl._
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.apache.pekko.util.ByteString
@@ -194,7 +194,7 @@ class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers
 
   def createStream(encoding: String) = {
     val as = ActorSystem("XmlEncodingYankerStage")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(system)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ByteString](as)
     val chunk = XmlEncodingStage.parser(encoding)
@@ -206,7 +206,7 @@ class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers
   //Create a stream which collects all the elements together (fold) before releasing them to the TestSink for checking
   def createStreamFold(encoding: String) = {
     val as = ActorSystem("XmlEncodingYankerStage")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(system)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ByteString](as)
     val chunk = XmlEncodingStage.parser(encoding)

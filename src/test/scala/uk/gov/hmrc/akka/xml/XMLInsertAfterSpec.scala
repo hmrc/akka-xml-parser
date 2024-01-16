@@ -42,7 +42,7 @@ class XMLInsertAfterSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -57,7 +57,7 @@ class XMLInsertAfterSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -72,7 +72,7 @@ class XMLInsertAfterSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -90,7 +90,7 @@ class XMLInsertAfterSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "66"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -108,7 +108,7 @@ class XMLInsertAfterSpec extends AnyFlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 

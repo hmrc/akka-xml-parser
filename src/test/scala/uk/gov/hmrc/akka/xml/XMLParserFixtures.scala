@@ -17,7 +17,7 @@
 package uk.gov.hmrc.akka.xml
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.{ActorMaterializer, Materializer}
 import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink}
 import org.apache.pekko.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
@@ -36,8 +36,8 @@ trait XMLParserFixtures {
     akka.stream.materializer.debug-logging = on
     akka.stream.materializer.debug.fuzzing-mode = on
     """)
-    implicit val system = ActorSystem("XMLParser",testConf)
-    implicit val mat = ActorMaterializer()
+    implicit val system: ActorSystem = ActorSystem("XMLParser",testConf)
+    implicit val mat: Materializer = Materializer(system)
 
     def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None) = Flow[ByteString]
       .via(FastParsingStage.parser(instructions,maxSize))
