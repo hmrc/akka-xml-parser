@@ -17,7 +17,7 @@
 package uk.gov.hmrc.akka.xml
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.ActorMaterializer
+import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl._
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.apache.pekko.util.ByteString
@@ -27,7 +27,7 @@ class CompleteChunkSpec extends AnyFlatSpec {
 
   def createStream() = {
     val as = ActorSystem("CompleteChunkSpec")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ParsingData](as)
     val chunk = CompleteChunkStage.parser()

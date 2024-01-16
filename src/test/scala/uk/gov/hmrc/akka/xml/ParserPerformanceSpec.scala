@@ -19,7 +19,7 @@ package uk.gov.hmrc.akka.xml
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.scaladsl._
 import org.apache.pekko.stream.testkit.scaladsl.TestSource
-import org.apache.pekko.stream.{ActorMaterializer, OverflowStrategy}
+import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.util.ByteString
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
@@ -153,7 +153,7 @@ class ParserPerformanceSpec extends AnyFlatSpec with ScalaFutures with MockitoSu
     val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
 
     val timeStarted = System.currentTimeMillis()
 
@@ -182,7 +182,7 @@ class ParserPerformanceSpec extends AnyFlatSpec with ScalaFutures with MockitoSu
     val msg = try testFile.getLines().mkString("\n") finally testFile.close()
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
 
     def runTest(): Future[Unit] = {
       val source = TestSource.probe[ParsingData](as)
@@ -218,7 +218,7 @@ class ParserPerformanceSpec extends AnyFlatSpec with ScalaFutures with MockitoSu
     //val input = ByteString.fromString(fileString)
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
     val timeStarted = System.currentTimeMillis()
     runTest(10)
 
