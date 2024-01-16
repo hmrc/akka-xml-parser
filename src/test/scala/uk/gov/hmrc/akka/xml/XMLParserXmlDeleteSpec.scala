@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Created by abhishek on 26/01/17.
   */
-class XMLParserXmlDeleteSpec extends FlatSpec
+class XMLParserXmlDeleteSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
@@ -36,14 +37,14 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
   import f._
 
-  behavior of "CompleteChunkStage#parser"
+  behavior of "FastParsingStage#parser"
   it should "delete a element from a valid xml when xml is in single chunk" in {
     val source = Source.single(ByteString("<xml><header><id>12345</id></header></xml>"))
     val paths = Seq[XMLInstruction](XMLDelete(Seq("xml", "header", "id")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -58,7 +59,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -73,7 +74,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -88,7 +89,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -104,7 +105,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "75"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -120,7 +121,7 @@ class XMLParserXmlDeleteSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "75"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "75"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 

@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream.{Attributes, FlowShape, Inlet, Outlet}
+import org.apache.pekko.util.ByteString
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -126,7 +126,7 @@ object ExtractStage {
                       nodes(localName) = (currentSeq + 1, true)
                     }
                     nodes.filter(_._2._2 == true)
-                      .mapValues(_._1)
+                      .view.mapValues(_._1)
                 }
                 node += localName
                 instructions.foreach(f = (e: XMLInstruction) => e match {

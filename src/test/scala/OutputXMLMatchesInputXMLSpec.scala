@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-import akka.stream.scaladsl.{Keep, Source}
-import akka.util.ByteString
+import org.apache.pekko.stream.scaladsl.{Keep, Source}
+import org.apache.pekko.util.ByteString
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.{BeforeAndAfterEach, Matchers, OptionValues, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import uk.gov.hmrc.akka.xml._
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class OutputXMLMatchesInputXMLSpec extends WordSpecLike with Matchers with OptionValues with BeforeAndAfterEach with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
+class OutputXMLMatchesInputXMLSpec extends AnyWordSpecLike with Matchers with OptionValues with BeforeAndAfterEach with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
 
-  val inputXml                        = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><PostCode>Tf3 4NT</PostCode></Address>"
-  val inputXmlWithSelfClosingElement  = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><Line/><PostCode>Tf3 4NT</PostCode></Address>"
-  val inputXmlWithBlankElement        = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><Line></Line><PostCode>Tf3 4NT</PostCode></Address>"
+  val inputXml = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><PostCode>Tf3 4NT</PostCode></Address>"
+  val inputXmlWithSelfClosingElement = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><Line/><PostCode>Tf3 4NT</PostCode></Address>"
+  val inputXmlWithBlankElement = "<Address xmlns=\"http://www.govtalk.gov.uk/CM/address\"><Line>Line 1</Line><Line>Line 2</Line><Line></Line><PostCode>Tf3 4NT</PostCode></Address>"
 
   val f = fixtures
 
@@ -38,33 +39,33 @@ class OutputXMLMatchesInputXMLSpec extends WordSpecLike with Matchers with Optio
     val inputXmlSource: Source[ByteString, _] = Source.single(ByteString(inputXml))
 
     val result = for {
-        parsedXmlElements <- inputXmlSource
-          .via(CompleteChunkStage.parser())
-          .via(ParsingStage.parser(Seq(XMLExtract(Seq("Address"), Map.empty, true))))
-          .via(f.flowXMLElements)
-          .toMat(f.collectXMLElements)(Keep.right)
-          .run()(f.mat)
+      parsedXmlElements <- inputXmlSource
+        .via(CompleteChunkStage.parser())
+        .via(ParsingStage.parser(Seq(XMLExtract(Seq("Address"), Map.empty, true))))
+        .via(f.flowXMLElements)
+        .toMat(f.collectXMLElements)(Keep.right)
+        .run()(f.mat)
 
-        parsedXml = xpathValue(parsedXmlElements, Seq("Address"))
-      } yield {
-        parsedXml.get
-      }
-    
-      whenReady(result) { outputXml =>
-        println(s"INPUT  XML = $inputXml")
-        println(s"OUTPUT XML = $outputXml")
-        println()
+      parsedXml = xpathValue(parsedXmlElements, Seq("Address"))
+    } yield {
+      parsedXml.get
+    }
 
-        outputXml shouldBe inputXml
-      }
+    whenReady(result) { outputXml =>
+      println(s"INPUT  XML = $inputXml")
+      println(s"OUTPUT XML = $outputXml")
+      println()
+
+      outputXml shouldBe inputXml
+    }
   }
 
 
   "The output XML" should {
     "match the input XML" when {
-      "blank elements *** ARE *** present"            in parseAndCompare(inputXmlWithBlankElement)
+      "blank elements *** ARE *** present" in parseAndCompare(inputXmlWithBlankElement)
       "self closing elements are *** NOT *** present" in parseAndCompare(inputXml)
-      "self closing elements *** ARE *** present"     in parseAndCompare(inputXmlWithSelfClosingElement)
+      "self closing elements *** ARE *** present" in parseAndCompare(inputXmlWithSelfClosingElement)
     }
   }
 

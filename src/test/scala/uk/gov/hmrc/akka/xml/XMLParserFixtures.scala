@@ -16,11 +16,11 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Keep, Sink}
-import akka.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink}
+import org.apache.pekko.util.ByteString
 
 import scala.concurrent.Future
 
@@ -31,16 +31,17 @@ trait XMLParserFixtures {
 
   def fixtures = new {
 
-    val testConf: Config = ConfigFactory.parseString("""
+    val testConf: Config = ConfigFactory.parseString(
+      """
     akka.loglevel = DEBUG
     akka.stream.materializer.debug-logging = on
     akka.stream.materializer.debug.fuzzing-mode = on
     """)
-    implicit val system = ActorSystem("XMLParser",testConf)
-    implicit val mat = ActorMaterializer()
+    implicit val system: ActorSystem = ActorSystem("XMLParser", testConf)
+    implicit val mat: Materializer = Materializer(system)
 
     def parseToXMLElements(instructions: Seq[XMLInstruction], maxSize: Option[Int] = None) = Flow[ByteString]
-      .via(FastParsingStage.parser(instructions,maxSize))
+      .via(FastParsingStage.parser(instructions, maxSize))
       .via(flowXMLElements)
       .toMat(collectXMLElements)(Keep.right)
 
@@ -52,13 +53,13 @@ trait XMLParserFixtures {
         .toMat(collectXMLGroupElements)(Keep.right)
 
     def parseToByteStringViaExtract(instructions: Seq[XMLInstruction],
-                                parentNodes: Option[Seq[String]] = None) =
+                                    parentNodes: Option[Seq[String]] = None) =
       Flow[ByteString]
         .via(ExtractStage.parser(instructions, parentNodes))
         .via(flowByteStringViaExtract)
         .toMat(collectByteString)(Keep.right)
 
-    def parseToByteString(instructions: Seq[XMLInstruction],  insertPrologueIfNotPresent: Boolean = false, validationMaxSize: Option[Int] = None)
+    def parseToByteString(instructions: Seq[XMLInstruction], insertPrologueIfNotPresent: Boolean = false, validationMaxSize: Option[Int] = None)
     = Flow[ByteString]
       .via(FastParsingStage.parser(instructions, validationMaxSize, insertPrologueIfNotPresent))
       .via(flowByteString)

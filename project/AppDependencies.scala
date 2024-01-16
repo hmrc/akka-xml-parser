@@ -2,18 +2,19 @@ import sbt._
 
 object AppDependencies {
 
-  val akkaVersion = "2.5.26"
+  val pekkoVersion = "1.0.2"
 
   val compile = Seq(
-    "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+    "org.apache.pekko" %% "pekko-stream" % pekkoVersion,
     "com.fasterxml"     % "aalto-xml"    % "1.0.0"
   )
 
   val test = Seq(
-    "org.pegdown"       % "pegdown"                  % "1.6.0"     % "test",
-    "org.mockito"       %% "mockito-scala-scalatest" % "1.7.1"    % "test",
-    "com.typesafe.akka" %% "akka-stream-testkit"     % akkaVersion % "test",
-    "org.scalatest"     %% "scalatest"               % "3.0.9"     % "test"
+    "org.pegdown"             %  "pegdown"                  % "1.6.0"      % Test,
+    "org.mockito"             %% "mockito-scala-scalatest"  % "1.17.12"    % Test,
+    "org.apache.pekko"        %% "pekko-stream-testkit"     % pekkoVersion % Test,
+    "org.scalatest"           %% "scalatest"                % "3.2.15"     % Test,
+    "com.vladsch.flexmark"    %  "flexmark-all"             % "0.64.4"     % Test
   )
 
   def apply(): Seq[ModuleID] = compile ++ test

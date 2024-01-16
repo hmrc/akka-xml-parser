@@ -16,15 +16,15 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import com.fasterxml.aalto.{AsyncByteArrayFeeder, AsyncXMLInputFactory, AsyncXMLStreamReader, WFCException}
-import javax.xml.stream.XMLStreamConstants
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import org.apache.pekko.stream.{Attributes, FlowShape, Inlet, Outlet}
+import org.apache.pekko.util.ByteString
 
+import javax.xml.stream.XMLStreamConstants
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Try}
@@ -36,7 +36,7 @@ import scala.util.{Failure, Try}
   * The purpose of doing this is that in a downstream stage we can reliably parse xml tags, without worrying about half finished tags.
   * Created by abhishek on 28/02/17.
   */
-@deprecated("Use FastParsingStage instead","akka-xml-parser 1.0.0")
+@deprecated("Use FastParsingStage instead", "akka-xml-parser 1.0.0")
 object CompleteChunkStage {
   val MALFORMED_STATUS = "Malformed"
   val STREAM_MAX_SIZE = "Stream max size"
@@ -53,10 +53,10 @@ object CompleteChunkStage {
 
   def parser(maxSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false):
   Flow[ByteString, ParsingData, NotUsed] = {
-    Flow.fromGraph(new StreamingXmlParser(maxSize,insertPrologueIfNotPresent))
+    Flow.fromGraph(new StreamingXmlParser(maxSize, insertPrologueIfNotPresent))
   }
 
-  private class StreamingXmlParser(maxSize: Option[Int] = None,insertPrologueIfNotPresent: Boolean = false)
+  private class StreamingXmlParser(maxSize: Option[Int] = None, insertPrologueIfNotPresent: Boolean = false)
     extends GraphStage[FlowShape[ByteString, ParsingData]]
       with StreamHelper
       with ParsingDataFunctions {
@@ -97,7 +97,7 @@ object CompleteChunkStage {
               ByteString(data.substring(data.indexOf(OPENING_CHEVRON))).toArray
             else pushedData.toArray
 
-            if(insertPrologueIfNotPresent) {
+            if (insertPrologueIfNotPresent) {
               chunk = if (data.contains(XMLPROLOGUE_START)) chunk else ByteString(XMLPROLOGUE).toArray ++ chunk
             }
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
@@ -106,7 +106,6 @@ object CompleteChunkStage {
             chunk = pushedData.toArray
             parser.getInputFeeder.feedInput(chunk, 0, chunk.length)
           }
-
 
 
           totalProcessedLength += streamBuffer.length
@@ -208,7 +207,7 @@ object CompleteChunkStage {
           (
             if (start == 1) 0 else start - (totalProcessedLength - chunk.length),
             reader.getLocationInfo.getEndingByteOffset.toInt - (totalProcessedLength - chunk.length)
-            )
+          )
         }
       }
   }

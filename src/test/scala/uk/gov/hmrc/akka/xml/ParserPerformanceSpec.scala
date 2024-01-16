@@ -16,24 +16,24 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, OverflowStrategy}
-import akka.stream.scaladsl._
-import akka.stream.testkit.scaladsl.TestSource
-import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.stream.testkit.scaladsl.TestSource
+import org.apache.pekko.stream.{Materializer, OverflowStrategy}
+import org.apache.pekko.util.ByteString
 import org.mockito.scalatest.MockitoSugar
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.time.{Seconds, Span}
 
-import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import org.scalatest.time.{Span, Seconds}
+import scala.util.{Failure, Success}
 
 /**
   * This case tests TE parsing performance for a larger file.
   */
-class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
+class ParserPerformanceSpec extends AnyFlatSpec with ScalaFutures with MockitoSugar with Eventually with XMLParserFixtures {
 
 
   val XMLNS = "xmlns"
@@ -153,7 +153,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     val messages = ParserTestHelpers.getBrokenMessage(msg, 500)
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
 
     val timeStarted = System.currentTimeMillis()
 
@@ -169,11 +169,12 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     queue.complete()
 
     assert(result.isReadyWithin(Span(15, Seconds)))
-    whenReady(result){ elements => {
+    whenReady(result) { elements => {
       assert(elements.size == 19)
       val duration = (System.currentTimeMillis() - timeStarted)
       info(s"Total time taken: ${duration}ms")
-    }}
+    }
+    }
   }
 
   it should "ParsingStage be performant on large messages in several iterations" in {
@@ -181,7 +182,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     val msg = try testFile.getLines().mkString("\n") finally testFile.close()
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
 
     def runTest(): Future[Unit] = {
       val source = TestSource.probe[ParsingData](as)
@@ -201,9 +202,9 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     val timeStarted = System.currentTimeMillis()
 
     (1 to nRuns).foreach(i => {
-      whenReady(runTest()) { _ => ()}
+      whenReady(runTest()) { _ => () }
     })
-    
+
     val duration = System.currentTimeMillis() - timeStarted
     val perFile = duration / nRuns
     info(s"Total time taken: ${duration}ms")
@@ -217,7 +218,7 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
     //val input = ByteString.fromString(fileString)
 
     val as = ActorSystem("PerformanceTest")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
     val timeStarted = System.currentTimeMillis()
     runTest(10)
 
@@ -248,7 +249,6 @@ class ParserPerformanceSpec extends FlatSpec with Matchers with ScalaFutures wit
       }
     }
   }
-
 
 
 }

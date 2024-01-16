@@ -16,18 +16,19 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 
 /**
   * Created by abhishek on 09/12/16.
   */
 class XMLParserXmlUpdateSpec
-  extends FlatSpec
+  extends AnyFlatSpec
     with Matchers
     with ScalaFutures
     with MockitoSugar
@@ -35,7 +36,7 @@ class XMLParserXmlUpdateSpec
     with XMLParserFixtures {
 
   val f = fixtures
-  implicit override val patienceConfig =
+  implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(5, Millis))
 
   import f._

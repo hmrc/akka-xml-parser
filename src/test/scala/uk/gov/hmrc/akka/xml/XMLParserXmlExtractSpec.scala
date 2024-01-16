@@ -16,16 +16,17 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.{Keep, Source}
-import akka.util.ByteString
+import org.apache.pekko.stream.scaladsl.{Keep, Source}
+import org.apache.pekko.util.ByteString
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Created by abhishek on 23/09/16.
   */
-class XMLParserXmlExtractSpec extends FlatSpec
+class XMLParserXmlExtractSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
@@ -45,7 +46,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -61,7 +62,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "65"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -81,7 +82,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths, Some(50)))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -95,8 +96,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "0"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_IS_EMPTY))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "0"), Some(FastParsingStage.STREAM_SIZE)),
+        XMLElement(List(), Map.empty, Some(FastParsingStage.STREAM_IS_EMPTY))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -109,8 +110,8 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id")))
     whenReady(source.runWith(parseToXMLElements(paths, Some(40)))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "0"), Some(CompleteChunkStage.STREAM_SIZE)),
-        XMLElement(List(), Map.empty, Some(CompleteChunkStage.STREAM_IS_EMPTY))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "0"), Some(FastParsingStage.STREAM_SIZE)),
+        XMLElement(List(), Map.empty, Some(FastParsingStage.STREAM_IS_EMPTY))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -129,7 +130,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "65"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "65"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -147,7 +148,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "37"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "37"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -218,7 +219,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "41"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "41"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -237,7 +238,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "60"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -256,7 +257,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("<id><foo>foo</foo><bar>bar</bar></id>")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "83"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "83"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -279,7 +280,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "60"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "60"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -292,7 +293,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val source = Source.single(ByteString("malformed"))
 
     whenReady(source.runWith(parseToXMLElements(Seq[XMLInstruction]()))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
     }
 
     whenReady(source.runWith(parseToByteString(Seq[XMLInstruction]()))) { r =>
@@ -306,7 +307,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteString(Seq[XMLInstruction]()))) { r =>
@@ -321,7 +322,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
@@ -333,7 +334,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction]()
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -346,7 +347,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction]()
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -360,7 +361,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "71"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "71"), Some(FastParsingStage.STREAM_SIZE)),
         XMLElement(Seq("xml", "body", "element"), Map("Attribute" -> "Test"), Some("elementText")
         )
       )
@@ -376,7 +377,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "47"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "47"), Some(FastParsingStage.STREAM_SIZE)),
         XMLElement(Seq("xml"), Map("Attribute2" -> "Test2"), Some(""))
       )
     }
@@ -391,7 +392,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val paths = Seq[XMLInstruction](XMLExtract(Seq("xml", "header", "id"), Map("Attribute" -> "notTest")))
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
-      r shouldBe Set(XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "74"), Some(CompleteChunkStage.STREAM_SIZE)))
+      r shouldBe Set(XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "74"), Some(FastParsingStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml><body><element Attribute=\"notTest\">elementText</element></body></xml>"
@@ -405,7 +406,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml"), Map("type" -> "test"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE)))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "66"), Some(FastParsingStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml type=\"test\"><body><foo>test</foo><bar>test</bar></body></xml>"
@@ -419,7 +420,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "100"), Some(CompleteChunkStage.STREAM_SIZE)))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "100"), Some(FastParsingStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<xml xmlns=\"http://www.govtalk.gov.uk/CM/envelope\"><body><foo>test</foo><bar>test</bar></body></xml>"
@@ -433,7 +434,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk.gov.uk/CM/envelope"), Some("")),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "132"), Some(CompleteChunkStage.STREAM_SIZE)))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "132"), Some(FastParsingStage.STREAM_SIZE)))
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
       r.utf8String shouldBe "<gt:GovTalkMessage xmlns:gt=\"http://www.govtalk.gov.uk/CM/envelope\"><gt:EnvelopeVersion>2.0</gt:EnvelopeVersion></gt:GovTalkMessage>"
@@ -448,7 +449,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "236"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
     whenReady(source.runWith(parseToByteString(paths))) { r =>
@@ -470,7 +471,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "236"), Some(FastParsingStage.STREAM_SIZE)),
         XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), None)
       )
     }
@@ -495,7 +496,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "236"), Some(FastParsingStage.STREAM_SIZE)),
         XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), None)
       )
     }
@@ -521,7 +522,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "236"), Some(FastParsingStage.STREAM_SIZE))
         // We shouldn't see this one - XMLElement(Seq("xml"), Map("xsi:schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), Some("")),
         //XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
@@ -547,7 +548,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
       r shouldBe Set(
         XMLElement(Seq("xml"), Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"), None),
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "236"), Some(CompleteChunkStage.STREAM_SIZE)),
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "236"), Some(FastParsingStage.STREAM_SIZE)),
         XMLElement(Seq("xml"), Map("schemaLocation" -> "http://www.govtalk.gov.uk/CM/envelope envelope-v2-0-HMRC.xsd"), None)
         //XMLElement(Seq("xml"), Map("xmlns:xsi" -> "http://www.w3.org/2001/XMLSchema-instance"), Some(""))
       )
@@ -595,7 +596,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "939"), Some(CompleteChunkStage.STREAM_SIZE)),
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "939"), Some(FastParsingStage.STREAM_SIZE)),
       XMLElement(List("GovTalkMessage"), Map("xmlns:gt" -> "http://www.govtalk"), None),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Function"), Map(), Some("submit")),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Qualifier"), Map(), Some("response")),
@@ -634,7 +635,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "881"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "881"), Some(FastParsingStage.STREAM_SIZE))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -671,7 +672,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "851"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "851"), Some(FastParsingStage.STREAM_SIZE))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -709,7 +710,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
 
     val expected = Set(
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "851"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "851"), Some(FastParsingStage.STREAM_SIZE))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -744,7 +745,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val expected = Set(
       XMLElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey"), Some("Retry2")),
       XMLElement(List("GovTalkMessage", "GovTalkDetails", "Keys", "Key"), Map("Type" -> "TestKey5"), Some("Retry5")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "884"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "884"), Some(FastParsingStage.STREAM_SIZE))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>
@@ -781,7 +782,7 @@ class XMLParserXmlExtractSpec extends FlatSpec
     val expected = Set(
       XMLElement(List("GovTalkMessage"),Map("xmlns" -> "http://www.govtalk.gov.uk/CM/envelope"),None),
       XMLElement(List("GovTalkMessage", "Header", "MessageDetails", "Class"), Map(), Some("HMRC-CT-CT600")),
-      XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "897"), Some(CompleteChunkStage.STREAM_SIZE))
+      XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "897"), Some(FastParsingStage.STREAM_SIZE))
     )
 
     whenReady(source.runWith(parseToXMLElements(paths))) { r =>

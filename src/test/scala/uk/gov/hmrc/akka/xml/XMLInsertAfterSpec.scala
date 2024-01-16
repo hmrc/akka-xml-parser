@@ -16,15 +16,16 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Created by abhishek on 22/03/17.
   */
-class XMLInsertAfterSpec extends FlatSpec
+class XMLInsertAfterSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with Eventually
@@ -41,7 +42,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -56,7 +57,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -71,7 +72,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -89,7 +90,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "66"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "66"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 
@@ -107,7 +108,7 @@ class XMLInsertAfterSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLElements(instruction))) { r =>
       r shouldBe Set(
-        XMLElement(List(), Map(CompleteChunkStage.STREAM_SIZE -> "42"), Some(CompleteChunkStage.STREAM_SIZE))
+        XMLElement(List(), Map(FastParsingStage.STREAM_SIZE -> "42"), Some(FastParsingStage.STREAM_SIZE))
       )
     }
 

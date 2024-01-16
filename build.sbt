@@ -3,24 +3,24 @@ import uk.gov.hmrc.DefaultBuildSettings
 
 val appName = "akka-xml-parser"
 
+ThisBuild / majorVersion := 2
+ThisBuild / scalaVersion := "2.13.12"
+
 lazy val microservice = Project(appName, file("."))
   .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
-  .settings(majorVersion := 1)
   .settings(DefaultBuildSettings.scalaSettings)
   .settings(DefaultBuildSettings.defaultSettings())
   .settings(
-    scalaVersion := "2.13.8",
     libraryDependencies ++= AppDependencies(),
     scoverageSettings
   )
 
 lazy val scoverageSettings = {
   Seq(
-    // Semicolon-separated list of regexs matching classes to exclude
     ScoverageKeys.coverageExcludedPackages := "<empty>;.*BuildInfo*.",
-    ScoverageKeys.coverageMinimum := 1,
+    ScoverageKeys.coverageMinimumStmtTotal := 1,
     ScoverageKeys.coverageFailOnMinimum := false,
     ScoverageKeys.coverageHighlighting := true,
-    parallelExecution in Test := false
+    Test / parallelExecution := false
   )
 }

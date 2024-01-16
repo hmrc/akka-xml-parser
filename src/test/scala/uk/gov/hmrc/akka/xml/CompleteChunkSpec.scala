@@ -16,18 +16,18 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.util.ByteString
-import org.scalatest.FlatSpec
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl._
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.util.ByteString
+import org.scalatest.flatspec.AnyFlatSpec
 
-class CompleteChunkSpec extends FlatSpec {
+class CompleteChunkSpec extends AnyFlatSpec {
 
   def createStream() = {
     val as = ActorSystem("CompleteChunkSpec")
-    val am = ActorMaterializer()(as)
+    val am = Materializer(as)
     val source = TestSource.probe[ByteString](as)
     val sink = TestSink.probe[ParsingData](as)
     val chunk = CompleteChunkStage.parser()
@@ -39,7 +39,7 @@ class CompleteChunkSpec extends FlatSpec {
 
   it should "only let whole xml tags through" in {
     //This is our entire test xml: <xml><header><id>Joska</id><aa>Pista</aa><bb>Miska</bb></header></xml>
-    val (pub,sub) = createStream()
+    val (pub, sub) = createStream()
     sub.request(20)
     pub.sendNext(ByteString("<xml><hea"))
     sub.expectNext(ParsingData(ByteString("<xml>"), Set.empty, 5))
@@ -56,11 +56,9 @@ class CompleteChunkSpec extends FlatSpec {
     pub.sendNext(ByteString("ader></xml>"))
     sub.expectNext(ParsingData(ByteString("</header></xml>"), Set(), 70))
     pub.sendComplete()
-    sub.expectNext(ParsingData(ByteString.empty,  Set(XMLElement(List(),Map("Stream Size" -> "70"), Some("Stream Size"))), 70))
+    sub.expectNext(ParsingData(ByteString.empty, Set(XMLElement(List(), Map("Stream Size" -> "70"), Some("Stream Size"))), 70))
     sub.expectComplete()
   }
-
-
 
 
 }

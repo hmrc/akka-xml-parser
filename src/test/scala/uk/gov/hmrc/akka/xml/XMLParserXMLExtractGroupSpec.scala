@@ -32,13 +32,14 @@
 
 package uk.gov.hmrc.akka.xml
 
-import akka.stream.scaladsl.{Keep, Source}
-import akka.util.ByteString
+import org.apache.pekko.stream.scaladsl.{Keep, Source}
+import org.apache.pekko.util.ByteString
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class XMLParserXMLExtractGroupSpec extends FlatSpec
+class XMLParserXMLExtractGroupSpec extends AnyFlatSpec
   with Matchers
   with ScalaFutures
   with MockitoSugar
@@ -254,7 +255,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val source = Source.single(ByteString("malformed"))
 
     whenReady(source.runWith(parseToXMLGroupElements(Seq.empty))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected character 'm' (code 109)")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
@@ -268,7 +269,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(Seq.empty))) { r =>
@@ -283,7 +284,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
       r.toSeq(0) shouldBe XMLGroupElement(Seq("xml", "header", "id"), Map.empty, Some("12345"))
-      r.toSeq(1).attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.toSeq(1).attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
       r.utf8String shouldBe "<xml><header><id>12345</id></xml>"
@@ -295,7 +296,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val paths = Seq.empty[XMLInstruction]
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
@@ -308,7 +309,7 @@ class XMLParserXMLExtractGroupSpec extends FlatSpec
     val paths = Seq.empty[XMLInstruction]
 
     whenReady(source.runWith(parseToXMLGroupElements(paths))) { r =>
-      r.head.attributes(CompleteChunkStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
+      r.head.attributes(FastParsingStage.MALFORMED_STATUS) contains ("Unexpected end tag: expected")
     }
 
     whenReady(source.runWith(parseToByteStringViaExtract(paths))) { r =>
