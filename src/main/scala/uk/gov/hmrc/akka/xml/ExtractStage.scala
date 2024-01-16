@@ -126,7 +126,7 @@ object ExtractStage {
                       nodes(localName) = (currentSeq + 1, true)
                     }
                     nodes.filter(_._2._2 == true)
-                      .mapValues(_._1)
+                      .view.mapValues(_._1)
                 }
                 node += localName
                 instructions.foreach(f = (e: XMLInstruction) => e match {

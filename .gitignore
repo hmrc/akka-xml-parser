@@ -20,5 +20,6 @@ dist
 .bloop
 .metals
 .vscode
+.bsp
 metals.sbt
     

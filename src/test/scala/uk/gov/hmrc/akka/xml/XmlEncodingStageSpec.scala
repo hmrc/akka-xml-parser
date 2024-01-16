@@ -37,11 +37,11 @@ class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers
     val (pub, sub) = createStream("UTF-8")
     sub.request(10)
     pub.sendNext(ByteString("<?xml versi"))
-    sub.expectNoMsg()
+    sub.expectNoMessage()
     pub.sendNext(ByteString("""on="1.0" enco"""))
-    sub.expectNoMsg()
+    sub.expectNoMessage()
     pub.sendNext(ByteString("""ding="ISO-88"""))
-    sub.expectNoMsg()
+    sub.expectNoMessage()
     pub.sendNext(ByteString("""59-1"?><GovTalkMe"""))
     sub.expectNext(ByteString("""<?xml version="1.0" encoding="UTF-8"?><GovTalkMe"""))
     //sub.request(1)
@@ -79,7 +79,7 @@ class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers
     val (pub, sub) = createStream("ISO-8859-1")
     sub.request(10)
     pub.sendNext(ByteString("""<?xml version="1.0" encoding="ISO-88"""))
-    sub.expectNoMsg()
+    sub.expectNoMessage()
     pub.sendComplete()
     sub.expectNext(ByteString("""<?xml version="1.0" encoding="ISO-88"""))
     sub.expectComplete()
@@ -171,7 +171,7 @@ class XmlEncodingStageSpec extends AnyFlatSpec with BeforeAndAfter with Matchers
 
       val orderedList = r.toList.sortWith((a, b) => seq2s(a) > seq2s(b))
       orderedList(0).attributes("Malformed") should startWith("Unsupported encoding 'ISO-8859-1': only UTF-8 and US-ASCII support by async")
-      orderedList(1).attributes(CompleteChunkStage.STREAM_SIZE) shouldBe ("155")
+      orderedList(1).attributes(FastParsingStage.STREAM_SIZE) shouldBe ("155")
     }
   }
 
