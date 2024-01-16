@@ -6,7 +6,7 @@ object AppDependencies {
 
   val compile = Seq(
     "org.apache.pekko" %% "pekko-stream" % pekkoVersion,
-    "com.fasterxml"     % "aalto-xml"    % "1.3.2"
+    "com.fasterxml"     % "aalto-xml"    % "1.0.0"
   )
 
   val test = Seq(
